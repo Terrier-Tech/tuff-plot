@@ -1,0 +1,19 @@
+{
+  "name": "tuff-plot",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "check": "tsc",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^4.6.4",
+    "vite": "^3.2.3"
+  },
+  "dependencies": {
+    "tuff-core": "^0.21.0"
+  }
+}
