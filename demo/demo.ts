@@ -13,8 +13,8 @@ export class App extends Part<{}> {
 		this.lineData = arrays.range(0, 100).map(i => {
 			return {
 				x: i/10,
-				foo: Math.sin(i/10) * 1.5,
-				bar: Math.cos(i/20)
+				foo: Math.sin(i/20) * 1.5,
+				bar: Math.cos(i/15)
 			}
 		})
 

@@ -5,7 +5,7 @@ import { Mat } from "tuff-core/mat"
 import { Part, PartTag } from "tuff-core/parts"
 import { PlotLayout } from "./layout"
 import { defaultColorPalette, PlotTrace, pointsString, segmentTraceValues } from "./trace"
-import { PlotAxis, updateAxisRange } from "./axis"
+import Axis, { PlotAxis } from "./axis"
 import * as mat from "tuff-core/mat"
 import { GTag, PolylineTagAttrs } from "tuff-core/svg"
 import { objects } from "tuff-core"
@@ -85,8 +85,15 @@ export class PlotPart extends Part<PlotState> {
         for (const trace of this.state.traces) {
             const xAxis = axes[trace.xAxis || 'bottom']!
             const yAxis = axes[trace.yAxis || 'left']!
-            updateAxisRange(xAxis, trace, trace.x)
-            updateAxisRange(yAxis, trace, trace.y)
+            Axis.updateRange(xAxis, trace, trace.x)
+            Axis.updateRange(yAxis, trace, trace.y)
+        }
+    
+        // round the axis ranges
+        for (const [_, axis] of Object.entries(axes)) {
+            if (axis) {
+                Axis.roundRange(axis)
+            }
         }
 
         // compute the trace transforms
@@ -109,8 +116,10 @@ export class PlotPart extends Part<PlotState> {
         log.info(`Computing ${trace.key} transform`, trace, xAxis, yAxis)
         const xRange = xAxis.computedRange || {min: 0, max: 1}
         const yRange = yAxis.computedRange || {min: 0, max: 1}
-        const dataBox = box.make(xRange.min, yRange.min, xRange.max - xRange.min, yRange.max - yRange.min)
-        this.traceTransforms[trace.key] = mat.fromBoxes(dataBox, this.viewport)
+        // flip the y range because the SVG coordinate space is upside down
+        const dataBox = box.make(xRange.min, yRange.max, xRange.max - xRange.min, yRange.min - yRange.max)
+        let transform = mat.fromBoxes(dataBox, this.viewport)
+        this.traceTransforms[trace.key] = transform
         log.info(`${trace.key} trace transform is: `, this.traceTransforms[trace.key])
     }
 
@@ -132,7 +141,6 @@ export class PlotPart extends Part<PlotState> {
                 const lineArgs: PolylineTagAttrs = objects.slice(style || {}, 'stroke', 'strokeWidth', 'strokeDasharray', 'strokeLinecap', 'strokeLinejoin')
                 lineArgs.fill = 'none'
                 lineArgs.points = pointsString(segment)
-                log.info(`Points: `, lineArgs.points)
                 parent.polyline(lineArgs)
             }
         }
