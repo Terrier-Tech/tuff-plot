@@ -131,7 +131,7 @@ export class PlotPart extends Part<PlotState> {
         log.info(`trace ${trace.key} has ${segments.length} segments`, segments)
 
         // ensure it has either a stroke or fill
-        const style = trace.style || {}
+        const style = {...trace.style}
         if (!style.stroke && !style.fill) {
             style.stroke = defaultColorPalette[index % defaultColorPalette.length]
         }

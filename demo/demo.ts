@@ -14,10 +14,14 @@ export class App extends Part<{}> {
 			return {
 				x: i/10,
 				foo: Math.sin(i/20) * 1.5,
-				bar: Math.cos(i/15)
+				bar: Math.cos(i/15),
+				baz: Math.cos(i/12-2) * 1.25
 			}
 		})
 
+		const simpleStyle = {
+			strokeWidth: 2
+		} as const
 		this.plots['simple'] = this.makePart(PlotPart, {
 			layout: {},
 			traces: [
@@ -26,18 +30,21 @@ export class App extends Part<{}> {
 					data: this.lineData,
 					x: 'x',
 					y: 'foo',
-					style: {
-						strokeWidth: 2
-					}
+					style: simpleStyle
 				},
 				{
 					key: 'bar',
 					data: this.lineData,
 					x: 'x',
 					y: 'bar',
-					style: {
-						strokeWidth: 2
-					}
+					style: simpleStyle
+				},
+				{
+					key: 'baz',
+					data: this.lineData,
+					x: 'x',
+					y: 'baz',
+					style: simpleStyle
 				}
 			]
 		})

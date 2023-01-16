@@ -11,6 +11,9 @@ export type AxisStyle = Pick<SvgBaseAttrs,
     tickLength?: number
 }
 
+export type LabelStyle = Pick<SvgBaseAttrs,
+    'fill' | 'textDecoration' | 'fontFamily' | 'fontSize' | 'fontSizeAdjust' | 'fontStretch' | 'fontStyle' | 'fontVariant' | 'fontWeight'>
+
 export type AxisRange = {
     min: number
     max: number
