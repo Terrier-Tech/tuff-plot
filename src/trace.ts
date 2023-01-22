@@ -24,7 +24,7 @@ export const defaultColorPalette = [
 ]
 
 export type PlotTrace<T extends {}> = {
-    key: string
+    id?: string
     x: keyof T
     y: keyof T
     xAxis?: XAxisName

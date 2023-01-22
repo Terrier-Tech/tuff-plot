@@ -25,4 +25,10 @@ describe('Axis Rounding', () => {
         expect(axis.computedRange.max).toBe(1)
     })
 
+    it('should compute ticks', () => {
+        const axis = makeAxis('auto', {min: 0, max: 1})
+        Axis.computeTicks(axis)
+        expect(axis.ticks).toStrictEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
+    })
+
 })

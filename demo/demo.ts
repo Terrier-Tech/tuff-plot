@@ -12,35 +12,44 @@ export class App extends Part<{}> {
 	async init() {
 		this.lineData = arrays.range(0, 100).map(i => {
 			return {
-				x: i/10,
+				x: i/20,
 				foo: Math.sin(i/20) * 1.5,
 				bar: Math.cos(i/15),
 				baz: Math.cos(i/12-2) * 1.25
 			}
 		})
 
+		const baseAxis = {
+			type: 'number' as const,
+			range: 'auto' as const,
+			tickMode: 'auto' as const,
+			tickLength: 10
+		}
+
 		const simpleStyle = {
 			strokeWidth: 2
 		} as const
 		this.plots['simple'] = this.makePart(PlotPart, {
-			layout: {},
+			layout: {
+				axes: {
+					left: {...baseAxis},
+					bottom: {...baseAxis}
+				}
+			},
 			traces: [
 				{
-					key: 'foo',
 					data: this.lineData,
 					x: 'x',
 					y: 'foo',
 					style: simpleStyle
 				},
 				{
-					key: 'bar',
 					data: this.lineData,
 					x: 'x',
 					y: 'bar',
 					style: simpleStyle
 				},
 				{
-					key: 'baz',
 					data: this.lineData,
 					x: 'x',
 					y: 'baz',

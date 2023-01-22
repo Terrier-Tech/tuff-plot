@@ -15,5 +15,5 @@
     "noImplicitReturns": true,
     "skipLibCheck": true
   },
-  "include": ["src", "demo/demo.ts"]
+  "include": ["src", "demo/demo.ts", "postcss.config.js"]
 }

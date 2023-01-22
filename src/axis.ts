@@ -1,4 +1,4 @@
-import { arrays } from "tuff-core"
+import * as arrays from "tuff-core/arrays"
 import { Logger } from "tuff-core/logging"
 import { SvgBaseAttrs } from "tuff-core/svg"
 import { getTraceValues, PlotTrace } from "./trace"
@@ -6,10 +6,7 @@ import { getTraceValues, PlotTrace } from "./trace"
 const log = new Logger("PlotAxis")
 
 export type AxisStyle = Pick<SvgBaseAttrs, 
-    'opacity' | 'stroke' | 'strokeOpacity' | 'strokeWidth' | 'strokeDasharray' | 'strokeDashoffset' | 'strokeLinecap' | 'strokeLinejoin' | 'strokeMiterlimit'
-    > & {
-    tickLength?: number
-}
+    'opacity' | 'stroke' | 'strokeOpacity' | 'strokeWidth' | 'strokeDasharray' | 'strokeDashoffset' | 'strokeLinecap' | 'strokeLinejoin' | 'strokeMiterlimit'>
 
 export type LabelStyle = Pick<SvgBaseAttrs,
     'fill' | 'textDecoration' | 'fontFamily' | 'fontSize' | 'fontSizeAdjust' | 'fontStretch' | 'fontStyle' | 'fontVariant' | 'fontWeight'>
@@ -17,6 +14,18 @@ export type LabelStyle = Pick<SvgBaseAttrs,
 export type AxisRange = {
     min: number
     max: number
+}
+
+/**
+ * Computes a reasonable step by which to round or divide (for ticks) a range.
+ */
+function rangeStep(range: AxisRange): number {
+    const span = range.max - range.min
+    const step = (10**Math.floor(Math.log10(span)))
+    if (span / step > 10) {
+        return step * 2
+    }
+    return step
 }
 
 /**
@@ -70,25 +79,42 @@ function roundRange(axis: PlotAxis): boolean {
         // don't round a manual range
         return false
     }
-    const span = axis.computedRange.max - axis.computedRange.min
-    const step = (10**Math.round(Math.log10(span))) / 5
+    const oldRange = {...axis.computedRange}
+    const step = rangeStep(axis.computedRange)
     axis.computedRange.min = Math.floor(axis.computedRange.min / step) * step
     axis.computedRange.max = Math.ceil(axis.computedRange.max / step) * step
+    log.info(`Rounded range`, oldRange, axis.computedRange)
+    return true
+}
+
+function computeTicks(axis: PlotAxis): boolean {
+    if (!axis.computedRange) {
+        // nothing to round
+        return false
+    }
+    const step = rangeStep(axis.computedRange)
+    log.info(`Step for ${axis.computedRange.min} to ${axis.computedRange.max} is ${step}`)
+    axis.ticks = arrays.range(axis.computedRange.min, axis.computedRange.max, step)
+    log.info('Computed ticks', axis)
     return true
 }
 
 export type PlotAxis = {
     type: 'number' | 'group'
     range: 'auto' | AxisRange
+    tickMode?: 'auto' | 'manual'
+    ticks?: number[]
     computedRange?: AxisRange
-    style: AxisStyle
+    style?: AxisStyle
+    tickLength?: number
 }
 
 
 const Axis = {
     roundRange,
     updateRange,
-    extendRange
+    extendRange,
+    computeTicks
 }
 
 export default Axis
