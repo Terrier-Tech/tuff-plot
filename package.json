@@ -17,6 +17,6 @@
     "vitest": "^0.27.1"
   },
   "dependencies": {
-    "tuff-core": "^0.22.1"
+    "tuff-core": "^0.22.4"
   }
 }

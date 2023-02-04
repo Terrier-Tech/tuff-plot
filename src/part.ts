@@ -5,10 +5,11 @@ import { Mat } from "tuff-core/mat"
 import { Part, PartTag } from "tuff-core/parts"
 import Layout, { PlotLayout, PlotSide } from "./layout"
 import { defaultColorPalette, PlotTrace, pointsString, segmentTraceValues } from "./trace"
-import Axis, { AxisStyle, PlotAxis } from "./axis"
+import Axis, { AxisStyle, LabelStyle, PlotAxis } from "./axis"
 import * as mat from "tuff-core/mat"
-import { GTag, PolylineTagAttrs, SvgTagBase } from "tuff-core/svg"
-import { objects } from "tuff-core"
+import {GTag, LineTagAttrs, PolylineTagAttrs, TextTagAttrs} from "tuff-core/svg"
+import * as objects from "tuff-core/objects"
+import { Vec } from "tuff-core/vec"
 
 const log = new Logger("PlotPart")
 
@@ -46,6 +47,10 @@ export class PlotPart extends Part<PlotState> {
         strokeWidth: 1
     }
 
+    defaultLabelStyle: LabelStyle = {
+        fontSize: 12
+    }
+
     async init() {
         this.traces = this.state.traces
     }
@@ -80,8 +85,12 @@ export class PlotPart extends Part<PlotState> {
     padding: Padding = {top: 0, left: 0, right: 0, bottom: 0}
     viewport: Box = box.make(0, 0, 0, 0)
 
+    private computePad(): number {
+        return this.state.layout.pad || Layout.Defaults.pad
+    }
+
 	private computeLayout(elem: HTMLElement) {
-        const pad = this.state.layout.pad || Layout.Defaults.pad
+        const pad = this.computePad()
         this.traces = this.state.traces
 
         log.info(`Computing plot layout`, elem)
@@ -110,16 +119,24 @@ export class PlotPart extends Part<PlotState> {
         // compute the padding
         for (const side of Layout.PlotSides) {
             let p = pad
-            const axis = axes[side]
+            const axis = axes[side] as InternalAxis
             if (axis) {
                 const style = axis.style || this.defaultAxisStyle
-                ;(axis as InternalAxis).side = side as PlotSide // ish
+                const labelStyle = axis.labelStyle || this.defaultLabelStyle
+                axis.side = side as PlotSide
                 if (style.strokeWidth) {
                     p += style.strokeWidth
                 }
                 if (axis.tickLength) {
-                    p += axis.tickLength
+                    p += axis.tickLength + pad
                 }
+                if (labelStyle.fontSize) {
+                    p += labelStyle.fontSize + pad
+                }
+            }
+            else {
+                // show double pad on sides without an axis
+                p += pad
             }
             this.padding[side as keyof Padding] = p
         }
@@ -234,26 +251,61 @@ export class PlotPart extends Part<PlotState> {
 
         const tickLength = axis.tickLength || 0
         const range = axis.computedRange
+        const labelStyle = axis.labelStyle || this.defaultLabelStyle
         if (tickLength && axis.ticks && range) {
             for (const t of axis.ticks) {
                 const tScreen = (t-range.min)/(range.max-range.min) * screenSpan
+                let tickPoints: LineTagAttrs | null = null
                 switch (side) {
                     case 'left':
-                        parent.line('.tick', {x1: line.x1-tickLength, x2: line.x1, y1: line.y1+tScreen, y2: line.y1+tScreen}, style)
+                        tickPoints = {x1: line.x1-tickLength, x2: line.x1, y1: line.y1+tScreen, y2: line.y1+tScreen}
                         break
                     case 'right':
-                        parent.line('.tick', {x1: line.x1, x2: line.x1+tickLength, y1: line.y1+tScreen, y2: line.y1+tScreen}, style)
+                        tickPoints = {x1: line.x1, x2: line.x1+tickLength, y1: line.y1+tScreen, y2: line.y1+tScreen}
                         break
                     case 'top':
-                        parent.line('.tick', {x1: line.x1+tScreen, x2: line.x1+tScreen, y1: line.y1-tickLength, y2: line.y1}, style)
+                        tickPoints = {x1: line.x1+tScreen, x2: line.x1+tScreen, y1: line.y1-tickLength, y2: line.y1}
                         break
                     case 'bottom':
-                        parent.line('.tick', {x1: line.x1+tScreen, x2: line.x1+tScreen, y1: line.y2, y2: line.y2+tickLength}, style)
+                        tickPoints = {x1: line.x1+tScreen, x2: line.x1+tScreen, y1: line.y2 + tickLength, y2: line.y2}
                         break
+                }
+                if (tickPoints) {
+                    parent.line('.tick', tickPoints, style)
+                    this.renderTickLabel(parent, t, {x: tickPoints.x1!, y: tickPoints.y1!}, side, labelStyle)
                 }
             }
 
         }
+    }
+
+    renderTickLabel(parent: GTag, t: number, pos: Vec, side: PlotSide, style: LabelStyle) {
+        const pad = this.computePad()
+        const text = t.toString()
+        let attrs: TextTagAttrs = {...pos, ...style}
+        switch (side) {
+            case 'left':
+                attrs.textAnchor = 'end'
+                attrs.alignmentBaseline = 'middle'
+                attrs.x! -= pad
+                break
+            case 'right':
+                attrs.textAnchor = 'start'
+                attrs.alignmentBaseline = 'middle'
+                attrs.x! += pad
+                break
+            case 'top':
+                attrs.textAnchor = 'middle'
+                attrs.alignmentBaseline = 'baseline'
+                attrs.y! -= pad
+                break
+            case 'bottom':
+                attrs.textAnchor = 'middle'
+                attrs.alignmentBaseline = 'hanging'
+                attrs.y! += pad
+                break
+        }
+        parent.text(".label", {x: pos.x, y: pos.y, text: text}, attrs)
     }
 
 }

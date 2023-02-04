@@ -1,4 +1,4 @@
-import { arrays } from "tuff-core"
+import * as arrays from "tuff-core/arrays"
 import { Part, PartTag } from "tuff-core/parts"
 import { PlotPart } from "../src/part"
 import "./style.css"

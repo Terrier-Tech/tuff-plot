@@ -1,4 +1,4 @@
-import * as arrays from "tuff-core/arrays"
+import { arrays } from "tuff-core"
 import { Logger } from "tuff-core/logging"
 import { SvgBaseAttrs } from "tuff-core/svg"
 import { getTraceValues, PlotTrace } from "./trace"
@@ -107,6 +107,7 @@ export type PlotAxis = {
     computedRange?: AxisRange
     style?: AxisStyle
     tickLength?: number
+    labelStyle?: LabelStyle
 }
 
 

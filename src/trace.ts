@@ -1,4 +1,4 @@
-import { mat } from "tuff-core"
+import * as mat from "tuff-core/mat"
 import { Mat } from "tuff-core/mat"
 import { SvgBaseAttrs } from "tuff-core/svg"
 import { Vec } from "tuff-core/vec"

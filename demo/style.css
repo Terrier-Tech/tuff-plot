@@ -98,6 +98,8 @@ button:focus-visible {
 .tuff-part-PlotPart {
 	--axis-stroke: #fff;
 	--plot-background: #1b1b1b;
+	--label-fill: #fff;
+	--label-font-size: 12px;
 	width: 600px;
 	max-width: 100%;
 	min-height: 400px;
@@ -111,6 +113,10 @@ button:focus-visible {
 		bottom: 0;
 		& .axis, & .tick {
 			stroke: var(--axis-stroke);
+		}
+		& .label {
+			fill: var(--label-fill);
+			font-size: var(--label-font-size);
 		}
 	}
 }
