@@ -1,7 +1,7 @@
 import { arrays } from "tuff-core"
 import { Logger } from "tuff-core/logging"
 import { SvgBaseAttrs } from "tuff-core/svg"
-import { getTraceValues, PlotTrace } from "./trace"
+import Trace, { PlotTrace } from "./trace"
 
 const log = new Logger("PlotAxis")
 
@@ -41,7 +41,15 @@ function updateRange<T extends {}>(axis: PlotAxis, trace: PlotTrace<T>, col: key
         return
     }
 
-    const values = getTraceValues(trace, col)
+    if (axis.type == 'group') {
+        const stringValues = Trace.getStringValues(trace, col)
+        axis.computedRange = {min: -0.5, max: stringValues.length-0.5}
+        axis.groups ||= stringValues
+        log.info(`${col.toString()} axis groups`, axis.groups)
+        return
+    }
+
+    const values = Trace.getNumberValues(trace, col)
     const min = arrays.min(arrays.compact(values))
     const max = arrays.max(arrays.compact(values))
     axis.computedRange = extendRange({min, max}, axis.computedRange)
@@ -89,14 +97,33 @@ function roundRange(axis: PlotAxis): boolean {
 
 function computeTicks(axis: PlotAxis): boolean {
     if (!axis.computedRange) {
-        // nothing to round
+        // no range to use
         return false
     }
+
+    // grouped
+    if (axis.type == 'group') {
+        axis.ticks = arrays.range(Math.ceil(axis.computedRange.min), Math.floor(axis.computedRange.max))
+        log.info('Computed group ticks', axis)
+        return true
+    }
+
+    // numbers
     const step = rangeStep(axis.computedRange)
     log.info(`Step for ${axis.computedRange.min} to ${axis.computedRange.max} is ${step}`)
     axis.ticks = arrays.range(axis.computedRange.min, axis.computedRange.max, step)
-    log.info('Computed ticks', axis)
+    log.info('Computed number ticks', axis)
     return true
+}
+
+function valueTitle(axis: PlotAxis, value: number): string | undefined {
+    if (axis.type == 'group') {
+        if (axis.groups?.length) {
+            return axis.groups[Math.round(value)]
+        }
+        return undefined
+    }
+    return value.toString()
 }
 
 export type PlotAxis = {
@@ -104,17 +131,19 @@ export type PlotAxis = {
     range: 'auto' | AxisRange
     tickMode?: 'auto' | 'manual'
     ticks?: number[]
+    groups?: string[]
     computedRange?: AxisRange
     style?: AxisStyle
     tickLength?: number
     labelStyle?: LabelStyle
+    barRatio?: number
 }
 
 
 const Axis = {
     roundRange,
     updateRange,
-    extendRange,
+    valueTitle,
     computeTicks
 }
 

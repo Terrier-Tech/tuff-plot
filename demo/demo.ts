@@ -22,7 +22,6 @@ export class App extends Part<{}> {
 		const baseAxis = {
 			type: 'number' as const,
 			range: 'auto' as const,
-			tickMode: 'auto' as const,
 			tickLength: 10
 		}
 
@@ -54,6 +53,44 @@ export class App extends Part<{}> {
 					x: 'x',
 					y: 'baz',
 					style: simpleStyle
+				}
+			]
+		})
+
+		const barData = [
+			{name: 'foo', branch1: 3, branch2: 2},
+			{name: 'bar', branch1: 1.2, branch2: 4.5},
+			{name: 'baz', branch1: 5.8, branch2: 3.2},
+			{name: 'fab', branch1: 2.4, branch2: 1.3}
+		]
+
+		const barStyle = {
+			strokeWidth: 2
+		} as const
+		this.plots['bar'] = this.makePart(PlotPart, {
+			layout: {
+				axes: {
+					left: {...baseAxis},
+					bottom: {
+						...baseAxis,
+						type: 'group'
+					}
+				}
+			},
+			traces: [
+				{
+					data: barData,
+					type: 'bar',
+					x: 'name',
+					y: 'branch1',
+					style: barStyle
+				},
+				{
+					data: barData,
+					type: 'bar',
+					x: 'name',
+					y: 'branch2',
+					style: barStyle
 				}
 			]
 		})

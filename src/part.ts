@@ -4,12 +4,13 @@ import { Logger } from "tuff-core/logging"
 import { Mat } from "tuff-core/mat"
 import { Part, PartTag } from "tuff-core/parts"
 import Layout, { PlotLayout, PlotSide } from "./layout"
-import { defaultColorPalette, PlotTrace, pointsString, segmentTraceValues } from "./trace"
+import Trace, { defaultColorPalette, PlotTrace, pointsString } from "./trace"
 import Axis, { AxisStyle, LabelStyle, PlotAxis } from "./axis"
 import * as mat from "tuff-core/mat"
 import {GTag, LineTagAttrs, PolylineTagAttrs, TextTagAttrs} from "tuff-core/svg"
 import * as objects from "tuff-core/objects"
 import { Vec } from "tuff-core/vec"
+import {arrays} from "tuff-core"
 
 const log = new Logger("PlotPart")
 
@@ -23,6 +24,8 @@ type Padding = {top: number, right: number, bottom: number, left: number}
 
 type InternalTrace<T extends {}> = PlotTrace<T> & {
     transform?: Mat
+    _xAxis?: PlotAxis
+    _yAxis?: PlotAxis
 }
 
 type InternalAxis = PlotAxis & {
@@ -51,6 +54,10 @@ export class PlotPart extends Part<PlotState> {
         fontSize: 12
     }
 
+    defaultAxisSettings = {
+        barRatio: 0.75
+    }
+
     async init() {
         this.traces = this.state.traces
     }
@@ -66,9 +73,20 @@ export class PlotPart extends Part<PlotState> {
                     this.renderAxis(axes, axis)
                 }
             })
+            const numTraces = this.traces.length
             this.traces.forEach((trace, index) => {
                 svg.g(".trace", traceParent => {
-                    this.renderTrace(traceParent, trace, index)
+                    const traceType = trace.type || 'scatter'
+                    switch (traceType) {
+                        case 'scatter':
+                            this.renderScatterTrace(traceParent, trace, index, numTraces)
+                            break
+                        case 'bar':
+                            this.renderBarTrace(traceParent, trace, index, numTraces)
+                            break
+                        default:
+                            log.warn(`Don't know how to render trace type '${traceType}'`)
+                    }
                 })
             })
         })
@@ -108,12 +126,14 @@ export class PlotPart extends Part<PlotState> {
                 range: 'auto',
                 style: {}
             }
+            trace._xAxis = axes[xName]
             const yName = trace.yAxis || 'left'
             axes[yName] ||= {
                 type: 'number',
                 range: 'auto',
                 style: {}
             }
+            trace._yAxis = axes[yName]
         }
 
         // compute the padding
@@ -154,17 +174,28 @@ export class PlotPart extends Part<PlotState> {
 
         // compute the axis ranges
         for (const trace of this.traces) {
-            const xAxis = axes[trace.xAxis || 'bottom']!
-            const yAxis = axes[trace.yAxis || 'left']!
+            const xAxis = trace._xAxis!
+            const yAxis = trace._yAxis!
             Axis.updateRange(xAxis, trace, trace.x)
             Axis.updateRange(yAxis, trace, trace.y)
+
+            // force grouped axes to zero
+            if (xAxis.type == 'group' && yAxis.range == 'auto') {
+                yAxis.computedRange!.min = 0
+            }
+            if (yAxis.type == 'group' && xAxis.range == 'auto') {
+                xAxis.computedRange!.min = 0
+            }
         }
     
         // round the axes and compute the ticks
         for (const [_, axis] of Object.entries(axes)) {
             if (axis) {
-                Axis.roundRange(axis)
-                if (axis.tickMode == 'auto') {
+                if (axis.type == 'number') {
+                    Axis.roundRange(axis)
+                }
+                const tickMode = axis.tickMode || 'auto'
+                if (tickMode == 'auto') {
                     Axis.computeTicks(axis)
                 }
             }
@@ -197,10 +228,10 @@ export class PlotPart extends Part<PlotState> {
     }
 
 
-    private renderTrace<T extends {}>(parent: GTag, trace: InternalTrace<T>, index: number) {
+    private renderScatterTrace<T extends {}>(parent: GTag, trace: InternalTrace<T>, index: number, _: number) {
         // break the trace into segments and transform them
         const transform = trace.transform || mat.identity()
-        const segments = segmentTraceValues(trace, transform)
+        const segments = Trace.segmentValues(trace, transform)
         log.info(`trace ${trace.id} has ${segments.length} segments`, segments)
 
         // ensure it has either a stroke or fill
@@ -216,6 +247,61 @@ export class PlotPart extends Part<PlotState> {
                 lineArgs.points = pointsString(segment)
                 parent.polyline(lineArgs)
             }
+        }
+
+        // TODO: render points
+    }
+
+    private renderBarTrace<T extends {}>(parent: GTag, trace: InternalTrace<T>, index: number, numTraces: number) {
+        // ensure it has either a stroke or fill
+        const style = {...trace.style}
+        if (!style.stroke && !style.fill) {
+            style.fill = defaultColorPalette[index % defaultColorPalette.length]
+        }
+
+        // get the raw points
+        const xAxis = trace._xAxis!
+        const yAxis = trace._yAxis!
+        const xValues = Trace.getNumberValues(trace, trace.x, xAxis)
+        const yValues = Trace.getNumberValues(trace, trace.y, yAxis)
+        const points = arrays.range(0, xValues.length).map(i => {
+            const x = xValues[i] || 0
+            const y = yValues[i] || 0
+            return {x, y}
+        })
+
+        // compute the geometry of the boxes
+        const boxes: Box[] = []
+        if (xAxis.type == 'group') {
+            const ratio = xAxis.barRatio || this.defaultAxisSettings.barRatio
+            const width = ratio * ratio / numTraces // ratio squared because we want the groups to be separate as well
+            const dx = -ratio/2 + ((index+0.5) / numTraces)*ratio - width/2
+            for (const p of points) {
+                boxes.push({x: p.x+dx, y: 0, width: width, height: p.y})
+            }
+        }
+        else if (yAxis.type == 'group') {
+            const ratio = yAxis.barRatio || this.defaultAxisSettings.barRatio
+            const height = ratio * ratio / numTraces // ratio squared because we want the groups to be separate as well
+            const dy = -ratio / 2 + ((index + 0.5) / numTraces) * ratio - height / 2
+            for (const p of points) {
+                boxes.push({x: 0, y: p.y+dy, width: p.x, height: height})
+            }
+        }
+        else {
+            log.warn(`Unable to render a bar trace when neither axis has type=='group'`)
+            return
+        }
+
+        // transform and render the boxes
+        const transform = trace.transform || mat.identity()
+        for (const box of boxes) {
+            let screenBox = mat.transformBox(transform, box)
+            if (screenBox.height < 0) {
+                screenBox = {...screenBox, y: screenBox.y + screenBox.height, height: -screenBox.height}
+            }
+            const attrs = {...screenBox, ...style}
+            parent.rect(attrs)
         }
     }
 
@@ -254,7 +340,10 @@ export class PlotPart extends Part<PlotState> {
         const labelStyle = axis.labelStyle || this.defaultLabelStyle
         if (tickLength && axis.ticks && range) {
             for (const t of axis.ticks) {
-                const tScreen = (t-range.min)/(range.max-range.min) * screenSpan
+                let tScreen = (t-range.min)/(range.max-range.min) * screenSpan
+                if (orientation == 'vertical') {
+                    tScreen = screenSpan - tScreen
+                }
                 let tickPoints: LineTagAttrs | null = null
                 switch (side) {
                     case 'left':
@@ -272,16 +361,18 @@ export class PlotPart extends Part<PlotState> {
                 }
                 if (tickPoints) {
                     parent.line('.tick', tickPoints, style)
-                    this.renderTickLabel(parent, t, {x: tickPoints.x1!, y: tickPoints.y1!}, side, labelStyle)
+                    const text = Axis.valueTitle(axis, t)
+                    if (text) {
+                        this.renderTickLabel(parent, text, {x: tickPoints.x1!, y: tickPoints.y1!}, side, labelStyle)
+                    }
                 }
             }
 
         }
     }
 
-    renderTickLabel(parent: GTag, t: number, pos: Vec, side: PlotSide, style: LabelStyle) {
+    renderTickLabel(parent: GTag, text: string, pos: Vec, side: PlotSide, style: LabelStyle) {
         const pad = this.computePad()
-        const text = t.toString()
         let attrs: TextTagAttrs = {...pos, ...style}
         switch (side) {
             case 'left':
