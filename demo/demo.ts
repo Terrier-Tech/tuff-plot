@@ -31,8 +31,8 @@ export class App extends Part<{}> {
 		this.plots['simple'] = this.makePart(PlotPart, {
 			layout: {
 				axes: {
-					left: {...baseAxis},
-					bottom: {...baseAxis}
+					left: {...baseAxis, title: 'X'},
+					bottom: {...baseAxis, title: 'Y'}
 				}
 			},
 			traces: [
@@ -70,10 +70,11 @@ export class App extends Part<{}> {
 		this.plots['bar'] = this.makePart(PlotPart, {
 			layout: {
 				axes: {
-					left: {...baseAxis},
+					left: {...baseAxis, title: 'Group'},
 					bottom: {
 						...baseAxis,
-						type: 'group'
+						type: 'group',
+						title: 'Value'
 					}
 				}
 			},

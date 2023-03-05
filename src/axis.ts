@@ -116,6 +116,11 @@ function computeTicks(axis: PlotAxis): boolean {
     return true
 }
 
+/**
+ * Computes a string that represents the given value on this axis.
+ * @param axis
+ * @param value
+ */
 function valueTitle(axis: PlotAxis, value: number): string | undefined {
     if (axis.type == 'group') {
         if (axis.groups?.length) {
@@ -137,6 +142,8 @@ export type PlotAxis = {
     tickLength?: number
     labelStyle?: LabelStyle
     barRatio?: number
+    title?: string
+    titleStyle?: LabelStyle
 }
 
 

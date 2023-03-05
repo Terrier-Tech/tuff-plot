@@ -100,6 +100,8 @@ button:focus-visible {
 	--plot-background: #1b1b1b;
 	--label-fill: #fff;
 	--label-font-size: 12px;
+	--axis-title-font-size: 12px;
+	--axis-title-font-weight: bold;
 	width: 600px;
 	max-width: 100%;
 	min-height: 400px;
@@ -117,6 +119,19 @@ button:focus-visible {
 		& .label {
 			fill: var(--label-fill);
 			font-size: var(--label-font-size);
+		}
+		& .axis-title {
+			fill: var(--label-fill);
+			font-size: var(--axis-title-font-size);
+			font-weight: var(--axis-title-font-weight);
+			alignment-baseline: central;
+			text-anchor: middle;
+			&.left {
+				transform: rotate(-90deg);
+			}
+			&.right {
+				transform: rotate(90deg);
+			}
 		}
 	}
 }

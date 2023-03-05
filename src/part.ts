@@ -54,6 +54,11 @@ export class PlotPart extends Part<PlotState> {
         fontSize: 12
     }
 
+    defaultTitleStyle: LabelStyle = {
+        fontSize: 14,
+        fontWeight: 'bold'
+    }
+
     defaultAxisSettings = {
         barRatio: 0.75
     }
@@ -143,6 +148,7 @@ export class PlotPart extends Part<PlotState> {
             if (axis) {
                 const style = axis.style || this.defaultAxisStyle
                 const labelStyle = axis.labelStyle || this.defaultLabelStyle
+                const titleStyle = axis.titleStyle || this.defaultTitleStyle
                 axis.side = side as PlotSide
                 if (style.strokeWidth) {
                     p += style.strokeWidth
@@ -152,6 +158,9 @@ export class PlotPart extends Part<PlotState> {
                 }
                 if (labelStyle.fontSize) {
                     p += labelStyle.fontSize + pad
+                }
+                if (axis.title?.length && titleStyle.fontSize) {
+                    p += titleStyle.fontSize + pad
                 }
             }
             else {
@@ -308,6 +317,7 @@ export class PlotPart extends Part<PlotState> {
     private renderAxis(parent: GTag, axis: InternalAxis) {
         const style = axis.style || this.defaultAxisStyle
         const side = axis.side || 'bottom'
+        const pad = this.computePad()
         const orientation = (side == 'bottom' || side == 'top') ? 'horizontal' : 'vertical'
         log.info(`Rendering axis on ${side}`, axis)
         const vp = this.viewport
@@ -335,6 +345,7 @@ export class PlotPart extends Part<PlotState> {
         parent.line('.axis', line, style)
         const screenSpan = orientation == 'horizontal' ? line.x2 - line.x1 : line.y2 - line.y1
 
+        // ticks
         const tickLength = axis.tickLength || 0
         const range = axis.computedRange
         const labelStyle = axis.labelStyle || this.defaultLabelStyle
@@ -367,7 +378,39 @@ export class PlotPart extends Part<PlotState> {
                     }
                 }
             }
+        }
 
+        // title
+        const titleStyle = axis.titleStyle || this.defaultTitleStyle
+        if (axis.title?.length && titleStyle) {
+            const titleAttrs: TextTagAttrs = {...titleStyle}
+            titleAttrs.classes ||= []
+            titleAttrs.classes.push('axis-title')
+            titleAttrs.classes.push(orientation)
+            titleAttrs.classes.push(side)
+            const offset = pad * 2 + tickLength + (titleStyle.fontSize||0)/2 + (labelStyle?.fontSize || 0)
+            switch (side) {
+                case 'left':
+                    titleAttrs.x = line.x1 - offset
+                    break
+                case 'right':
+                    titleAttrs.x = line.x1 + offset
+                    break
+                case 'top':
+                    titleAttrs.y = line.y1 - offset
+                    break
+                case 'bottom':
+                    titleAttrs.y = line.y1 + offset
+                    break
+            }
+            let css: Partial<CSSStyleDeclaration> = {}
+            if (orientation == 'horizontal') {
+                titleAttrs.x = vp.x + vp.width / 2
+            } else { // vertical
+                titleAttrs.y = vp.y + vp.height / 2
+                css.transformOrigin = `${titleAttrs.x}px ${titleAttrs.y}px`
+            }
+            parent.text(titleAttrs).css(css).textContent(axis.title)
         }
     }
 
