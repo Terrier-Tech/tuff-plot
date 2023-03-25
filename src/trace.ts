@@ -1,6 +1,6 @@
 import * as mat from "tuff-core/mat"
 import { Mat } from "tuff-core/mat"
-import { SvgBaseAttrs } from "tuff-core/svg"
+import {GTag, SvgBaseAttrs} from "tuff-core/svg"
 import { Vec } from "tuff-core/vec"
 import {PlotAxis} from "./axis"
 
@@ -26,6 +26,11 @@ export const defaultColorPalette = [
 
 export type TraceType = 'scatter' | 'bar'
 
+export type MarkerStyle = {
+    shape: 'circle' | 'square' | 'triangle_up' | 'triangle_down' | 'diamond'
+    size: number
+}
+
 export type PlotTrace<T extends {}> = {
     id?: string
     type?: TraceType
@@ -35,6 +40,7 @@ export type PlotTrace<T extends {}> = {
     yAxis?: YAxisName
     data: T[]
     style?: TraceStyle
+    marker?: MarkerStyle
 }
 
 /**
@@ -122,17 +128,57 @@ function segmentValues<T extends {}>(trace: PlotTrace<T>, transform: Mat): Array
     return segments
 }
 
-
-export function pointsString(points: Vec[]): string {
+/**
+ * Converts an array of points into an SVG polyline `points` string.
+ * @param points
+ */
+function pointsString(points: Vec[]): string {
     return points.map(p => {
         return `${p.x},${p.y}`
     }).join(' ')
 }
 
+function renderMarker(parent: GTag, p: Vec, marker: MarkerStyle, style: TraceStyle) {
+    const s = marker.size
+    const d = s * Math.sqrt(2) / 2
+    switch (marker.shape) {
+        case 'square':
+            parent.rect({x: p.x - s/2, y: p.y - s/2, width: s, height: s}, style)
+            break
+        case 'circle':
+            parent.circle({cx: p.x, cy: p.y, r: s/2}, style)
+            break
+        case 'diamond':
+            parent.rect({x: p.x - s/2, y: p.y - s / 2, width: s, height: s, transform: "rotate(45)"}, style)
+                .css({transformOrigin: `${p.x}px ${p.y}px`})
+            break
+        case 'triangle_up':
+            const upPoints = [
+                {x: p.x, y: p.y-d},
+                {x: p.x-d, y: p.y+s/2},
+                {x: p.x+d, y: p.y+s/2}
+            ]
+            parent.polygon({points: pointsString(upPoints)}, style)
+            break
+        case 'triangle_down':
+            const downPoints = [
+                {x: p.x, y: p.y+d},
+                {x: p.x-d, y: p.y-s/2},
+                {x: p.x+d, y: p.y-s/2}
+            ]
+            parent.polygon({points: pointsString(downPoints)}, style)
+            break
+        default:
+            throw `Don't know how to render marker shape '${marker.shape}'`
+    }
+}
+
 const Trace = {
     getNumberValues,
     getStringValues,
-    segmentValues
+    segmentValues,
+    pointsString,
+    renderMarker
 }
 
 export default Trace

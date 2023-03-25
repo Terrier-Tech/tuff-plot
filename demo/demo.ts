@@ -8,14 +8,20 @@ export class App extends Part<{}> {
 	plots: Record<string,PlotPart> = {}
 
 	lineData: {x: number, foo: number, bar: number}[] = []
+	pointData: {x: number, baz: number}[] = []
 
 	async init() {
 		this.lineData = arrays.range(0, 100).map(i => {
 			return {
 				x: i/20,
 				foo: Math.sin(i/20) * 1.5,
-				bar: Math.cos(i/15),
-				baz: Math.cos(i/12-2) * 1.25
+				bar: Math.cos(i/15)
+			}
+		})
+		this.pointData = arrays.range(0, 100, 5).map(i => {
+			return {
+				x: i/20,
+				baz: Math.cos(i / 12 - 2) * 1.25
 			}
 		})
 
@@ -26,9 +32,10 @@ export class App extends Part<{}> {
 			gridStyle: {stroke: '#ffffff44', strokeWidth: 1}
 		}
 
-		const simpleStyle = {
+		const lineStyle = {
 			strokeWidth: 2
 		} as const
+
 		this.plots['simple'] = this.makePart(PlotPart, {
 			layout: {
 				axes: {
@@ -41,19 +48,23 @@ export class App extends Part<{}> {
 					data: this.lineData,
 					x: 'x',
 					y: 'foo',
-					style: simpleStyle
+					style: lineStyle
 				},
 				{
 					data: this.lineData,
 					x: 'x',
 					y: 'bar',
-					style: simpleStyle
+					style: lineStyle
 				},
 				{
-					data: this.lineData,
+					data: this.pointData,
 					x: 'x',
 					y: 'baz',
-					style: simpleStyle
+					style: {strokeWidth: 1},
+					marker: {
+						shape: 'circle',
+						size: 8
+					}
 				}
 			]
 		})

@@ -4,7 +4,7 @@ import { Logger } from "tuff-core/logging"
 import { Mat } from "tuff-core/mat"
 import { Part, PartTag } from "tuff-core/parts"
 import Layout, { PlotLayout, PlotSide } from "./layout"
-import Trace, { defaultColorPalette, PlotTrace, pointsString } from "./trace"
+import Trace, { defaultColorPalette, PlotTrace } from "./trace"
 import Axis, { AxisStyle, LabelStyle, PlotAxis } from "./axis"
 import * as mat from "tuff-core/mat"
 import {GTag, LineTagAttrs, PolylineTagAttrs, TextTagAttrs} from "tuff-core/svg"
@@ -245,20 +245,30 @@ export class PlotPart extends Part<PlotState> {
 
         // ensure it has either a stroke or fill
         const style = {...trace.style}
-        if (!style.stroke && !style.fill) {
-            style.stroke = defaultColorPalette[index % defaultColorPalette.length]
+        const defaultColor = defaultColorPalette[index % defaultColorPalette.length]
+        if (style.strokeWidth && !style.stroke) {
+            style.stroke = defaultColor
+        }
+        if (trace.marker && !style.fill) {
+            style.fill = defaultColor
         }
 
         if (style.stroke?.length) {
             for (const segment of segments) {
                 const lineArgs: PolylineTagAttrs = objects.slice(style || {}, 'stroke', 'strokeWidth', 'strokeDasharray', 'strokeLinecap', 'strokeLinejoin')
                 lineArgs.fill = 'none'
-                lineArgs.points = pointsString(segment)
+                lineArgs.points = Trace.pointsString(segment)
                 parent.polyline(lineArgs)
             }
         }
 
-        // TODO: render points
+        if (trace.marker && style.fill?.length) {
+            for (const segment of segments) {
+                for (const point of segment) {
+                    Trace.renderMarker(parent, point, trace.marker, style)
+                }
+            }
+        }
     }
 
     private renderBarTrace<T extends {}>(parent: GTag, trace: InternalTrace<T>, index: number, numTraces: number) {
