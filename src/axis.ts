@@ -144,6 +144,7 @@ export type PlotAxis = {
     barRatio?: number
     title?: string
     titleStyle?: LabelStyle
+    gridStyle?: AxisStyle
 }
 
 

@@ -22,7 +22,8 @@ export class App extends Part<{}> {
 		const baseAxis = {
 			type: 'number' as const,
 			range: 'auto' as const,
-			tickLength: 10
+			tickLength: 10,
+			gridStyle: {stroke: '#ffffff44', strokeWidth: 1}
 		}
 
 		const simpleStyle = {

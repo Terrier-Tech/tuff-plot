@@ -345,10 +345,11 @@ export class PlotPart extends Part<PlotState> {
         parent.line('.axis', line, style)
         const screenSpan = orientation == 'horizontal' ? line.x2 - line.x1 : line.y2 - line.y1
 
-        // ticks
+        // ticks and grid
         const tickLength = axis.tickLength || 0
         const range = axis.computedRange
         const labelStyle = axis.labelStyle || this.defaultLabelStyle
+        const gridStyle = axis.gridStyle
         if (tickLength && axis.ticks && range) {
             for (const t of axis.ticks) {
                 let tScreen = (t-range.min)/(range.max-range.min) * screenSpan
@@ -356,18 +357,23 @@ export class PlotPart extends Part<PlotState> {
                     tScreen = screenSpan - tScreen
                 }
                 let tickPoints: LineTagAttrs | null = null
+                let gridPoints: LineTagAttrs | null = null
                 switch (side) {
                     case 'left':
                         tickPoints = {x1: line.x1-tickLength, x2: line.x1, y1: line.y1+tScreen, y2: line.y1+tScreen}
+                        gridPoints = {x1: line.x1, x2: line.x1+vp.width, y1: line.y1+tScreen, y2: line.y1+tScreen}
                         break
                     case 'right':
                         tickPoints = {x1: line.x1, x2: line.x1+tickLength, y1: line.y1+tScreen, y2: line.y1+tScreen}
+                        gridPoints = {x1: line.x1, x2: line.x1-vp.width, y1: line.y1+tScreen, y2: line.y1+tScreen}
                         break
                     case 'top':
                         tickPoints = {x1: line.x1+tScreen, x2: line.x1+tScreen, y1: line.y1-tickLength, y2: line.y1}
+                        gridPoints = {x1: line.x1+tScreen, x2: line.x1+tScreen, y1: line.y1, y2: line.y1+vp.height}
                         break
                     case 'bottom':
                         tickPoints = {x1: line.x1+tScreen, x2: line.x1+tScreen, y1: line.y2 + tickLength, y2: line.y2}
+                        gridPoints = {x1: line.x1+tScreen, x2: line.x1+tScreen, y1: line.y2, y2: line.y2-vp.height}
                         break
                 }
                 if (tickPoints) {
@@ -376,6 +382,9 @@ export class PlotPart extends Part<PlotState> {
                     if (text) {
                         this.renderTickLabel(parent, text, {x: tickPoints.x1!, y: tickPoints.y1!}, side, labelStyle)
                     }
+                }
+                if (gridPoints && gridStyle) {
+                    parent.line('.grid', gridPoints, gridStyle)
                 }
             }
         }
