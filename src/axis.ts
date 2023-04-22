@@ -25,6 +25,9 @@ function rangeStep(range: AxisRange): number {
     if (span / step > 10) {
         return step * 2
     }
+    if (span / step == 1) {
+        return span / 10
+    }
     return step
 }
 
@@ -95,6 +98,11 @@ function roundRange(axis: PlotAxis): boolean {
     return true
 }
 
+/**
+ * Populates `axis.ticks` automatically based on the axis range.
+ * @param axis
+ * @return true if it actually computed the ticks, false if there's no range to use
+ */
 function computeTicks(axis: PlotAxis): boolean {
     if (!axis.computedRange) {
         // no range to use

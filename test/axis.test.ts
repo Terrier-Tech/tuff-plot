@@ -19,10 +19,11 @@ describe('Axis Rounding', () => {
     })
 
     it('should round to integers for small ranges', () => {
-        const axis = makeAxis('auto', {min: -0.1, max: 0.9})
+        const axis = makeAxis('auto', {min: -0.2, max: 0.9})
         expect(Axis.roundRange(axis)).toBe(true)
-        expect(axis.computedRange.min).toBe(-0.2)
-        expect(axis.computedRange.max).toBe(1)
+        expect(axis.computedRange).toBeDefined()
+        expect(axis.computedRange!.min).toBe(-1)
+        expect(axis.computedRange!.max).toBe(1)
     })
 
     it('should compute ticks', () => {
