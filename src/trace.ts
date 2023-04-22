@@ -3,6 +3,7 @@ import { Mat } from "tuff-core/mat"
 import {GTag, SvgBaseAttrs} from "tuff-core/svg"
 import { Vec } from "tuff-core/vec"
 import {PlotAxis} from "./axis"
+import dayjs from "dayjs"
 
 export type XAxisName = 'top' | 'bottom'
 
@@ -73,8 +74,13 @@ function getNumberValues<T extends {}>(trace: PlotTrace<T>, col: keyof T, axis?:
         if (typeof val == 'number') {
             return val
         }
-        else if (val) {
-            return parseFloat(val.toString())
+        else if (typeof val == 'string') {
+            if (axis && axis.type == 'time') {
+                return dayjs(val).valueOf()
+            }
+            else {
+                return parseFloat(val.toString())
+            }
         }
         else {
             return undefined

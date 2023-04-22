@@ -2,6 +2,7 @@ import { arrays } from "tuff-core"
 import { Logger } from "tuff-core/logging"
 import { SvgBaseAttrs } from "tuff-core/svg"
 import Trace, { PlotTrace } from "./trace"
+import dayjs from 'dayjs'
 
 const log = new Logger("PlotAxis")
 
@@ -16,12 +17,14 @@ export type AxisRange = {
     max: number
 }
 
-/**
- * Computes a reasonable step by which to round or divide (for ticks) a range.
- */
-function rangeStep(range: AxisRange): number {
-    const span = range.max - range.min
-    const step = (10**Math.floor(Math.log10(span)))
+const msPerMinute = 1000 * 60
+const msPerHour = msPerMinute * 60
+const msPerday = msPerHour * 24
+
+
+function numberRangeStep(min: number, max: number): number {
+    const span = max - min
+    const step = (10 ** Math.floor(Math.log10(span)))
     if (span / step > 10) {
         return step * 2
     }
@@ -29,6 +32,30 @@ function rangeStep(range: AxisRange): number {
         return span / 10
     }
     return step
+}
+
+/**
+ * Computes a reasonable step by which to round or divide (for ticks) a range.
+ */
+function rangeStep(range: AxisRange, type: AxisType): number {
+    switch (type) {
+        case 'group':
+            return 1
+        case 'time':
+            const dMin = dayjs(range.min)
+            const dMax = dayjs(range.max)
+            const diff = dMax.diff(dMin)
+            // TODO: add more logic for other time spans
+            if (diff > 3 * msPerday) {
+                // day steps
+                return msPerday
+            }
+            else {
+                return numberRangeStep(range.min, range.max)
+            }
+        default: // number
+            return numberRangeStep(range.min, range.max)
+    }
 }
 
 /**
@@ -52,7 +79,7 @@ function updateRange<T extends {}>(axis: PlotAxis, trace: PlotTrace<T>, col: key
         return
     }
 
-    const values = Trace.getNumberValues(trace, col)
+    const values = Trace.getNumberValues(trace, col, axis)
     const min = arrays.min(arrays.compact(values))
     const max = arrays.max(arrays.compact(values))
     axis.computedRange = extendRange({min, max}, axis.computedRange)
@@ -91,7 +118,7 @@ function roundRange(axis: PlotAxis): boolean {
         return false
     }
     const oldRange = {...axis.computedRange}
-    const step = rangeStep(axis.computedRange)
+    const step = rangeStep(axis.computedRange, axis.type)
     axis.computedRange.min = Math.floor(axis.computedRange.min / step) * step
     axis.computedRange.max = Math.ceil(axis.computedRange.max / step) * step
     log.info(`Rounded range`, oldRange, axis.computedRange)
@@ -116,8 +143,8 @@ function computeTicks(axis: PlotAxis): boolean {
         return true
     }
 
-    // numbers
-    const step = rangeStep(axis.computedRange)
+    // number or time
+    const step = rangeStep(axis.computedRange, axis.type)
     log.info(`Step for ${axis.computedRange.min} to ${axis.computedRange.max} is ${step}`)
     axis.ticks = arrays.range(axis.computedRange.min, axis.computedRange.max, step)
     log.info('Computed number ticks', axis)
@@ -139,8 +166,10 @@ function valueTitle(axis: PlotAxis, value: number): string | undefined {
     return value.toString()
 }
 
+export type AxisType = 'number' | 'group' | 'time'
+
 export type PlotAxis = {
-    type: 'number' | 'group'
+    type: AxisType
     range: 'auto' | AxisRange
     tickMode?: 'auto' | 'manual'
     ticks?: number[]

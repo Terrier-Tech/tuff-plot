@@ -17,6 +17,7 @@
     "vitest": "^0.27.1"
   },
   "dependencies": {
+    "dayjs": "^1.11.7",
     "tuff-core": "^0.22.4"
   }
 }
