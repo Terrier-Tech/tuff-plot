@@ -390,7 +390,7 @@ export class PlotPart extends Part<PlotState> {
                 }
                 if (tickPoints) {
                     parent.line('.tick', tickPoints, style)
-                    const text = Axis.valueTitle(axis, t)
+                    const text = Axis.valueTitle(axis, t, axis.tickFormat)
                     if (text) {
                         this.renderTickLabel(parent, text, {x: tickPoints.x1!, y: tickPoints.y1!}, side, labelStyle)
                     }

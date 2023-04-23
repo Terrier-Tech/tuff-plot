@@ -3,6 +3,7 @@ import { Logger } from "tuff-core/logging"
 import { SvgBaseAttrs } from "tuff-core/svg"
 import Trace, { PlotTrace } from "./trace"
 import dayjs from 'dayjs'
+import numeral from "numeral"
 
 const log = new Logger("PlotAxis")
 
@@ -164,15 +165,28 @@ function computeTicks(axis: PlotAxis): boolean {
  * Computes a string that represents the given value on this axis.
  * @param axis
  * @param value
+ * @param format an optional format string (should be dayjs for axis.type=='time' or numeral for axis.type=='number')
  */
-function valueTitle(axis: PlotAxis, value: number): string | undefined {
+function valueTitle(axis: PlotAxis, value: number, format?: string): string | undefined {
     if (axis.type == 'group') {
         if (axis.groups?.length) {
             return axis.groups[Math.round(value)]
         }
         return undefined
     }
-    return value.toString()
+    if (format) {
+        if (axis.type == 'time') {
+            // assume it's a dayjs format
+            return dayjs(value).format(format)
+        }
+        else {
+            // assume it's a numeral format
+            return numeral(value).format(format)
+        }
+    }
+    else {
+        return value.toString()
+    }
 }
 
 export type AxisType = 'number' | 'group' | 'time'
@@ -181,6 +195,7 @@ export type PlotAxis = {
     type: AxisType
     range: 'auto' | AxisRange
     tickMode?: 'auto' | 'manual'
+    tickFormat?: string
     ticks?: number[]
     groups?: string[]
     computedRange?: AxisRange
