@@ -19,19 +19,24 @@ export type AxisRange = {
 
 const msPerMinute = 1000 * 60
 const msPerHour = msPerMinute * 60
-const msPerday = msPerHour * 24
+const msPerDay = msPerHour * 24
 
-
-function numberRangeStep(min: number, max: number): number {
-    const span = max - min
+/**
+ * Computes a nice step for things like axis rounding and ticks in the given range.
+ * @param min the start of the range
+ * @param max the stop of the range
+ * @param scale a scale factor to apply (range is divided by scale, result is multuplied by it)
+ */
+function numberRangeStep(min: number, max: number, scale: number = 1): number {
+    const span = max/scale - min/scale
     const step = (10 ** Math.floor(Math.log10(span)))
     if (span / step > 10) {
-        return step * 2
+        return step * 2 * scale
     }
     if (span / step == 1) {
-        return span / 10
+        return span / 10 * scale
     }
-    return step
+    return step * scale
 }
 
 /**
@@ -46,9 +51,13 @@ function rangeStep(range: AxisRange, type: AxisType): number {
             const dMax = dayjs(range.max)
             const diff = dMax.diff(dMin)
             // TODO: add more logic for other time spans
-            if (diff > 3 * msPerday) {
+            if (diff > 100 * msPerDay) {
+                // month-ish steps
+                return numberRangeStep(range.min, range.max, msPerDay*30)
+            }
+            if (diff > 3 * msPerDay) {
                 // day steps
-                return msPerday
+                return numberRangeStep(range.min, range.max, msPerDay)
             }
             else {
                 return numberRangeStep(range.min, range.max)

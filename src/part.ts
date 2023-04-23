@@ -240,7 +240,9 @@ export class PlotPart extends Part<PlotState> {
     private renderScatterTrace<T extends {}>(parent: GTag, trace: InternalTrace<T>, index: number, _: number) {
         // break the trace into segments and transform them
         const transform = trace.transform || mat.identity()
-        const segments = Trace.segmentValues(trace, transform)
+        const xAxis = trace._xAxis!
+        const yAxis = trace._yAxis!
+        const segments = Trace.segmentValues(trace, transform, xAxis, yAxis)
         log.info(`trace ${trace.id} has ${segments.length} segments`, segments)
 
         // ensure it has either a stroke or fill

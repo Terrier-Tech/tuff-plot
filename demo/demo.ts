@@ -2,6 +2,7 @@ import * as arrays from "tuff-core/arrays"
 import { Part, PartTag } from "tuff-core/parts"
 import { PlotPart } from "../src/part"
 import "./style.css"
+import dayjs from "dayjs"
 
 export class App extends Part<{}> {
 
@@ -107,6 +108,52 @@ export class App extends Part<{}> {
 				}
 			]
 		})
+
+
+		// random walk time-based data
+		let foo = 0
+		let bar = 0
+		const dateData = arrays.range(0, 60).map(i => {
+			return {
+				date: dayjs().add(i, 'days').format(),
+				foo: foo + (Math.random()-0.25),
+				bar: bar + (Math.random()-0.75)
+			}
+		})
+
+		const dateStyle = {
+			strokeWidth: 2
+		} as const
+
+		this.plots['date'] = this.makePart(PlotPart, {
+			layout: {
+				axes: {
+					left: {...baseAxis, title: 'Value'},
+					bottom: {
+						...baseAxis,
+						type: 'time',
+						title: 'Date'
+					}
+				}
+			},
+			traces: [
+				{
+					data: dateData,
+					type: 'scatter',
+					x: 'date',
+					y: 'foo',
+					style: dateStyle
+				},
+				{
+					data: dateData,
+					type: 'scatter',
+					x: 'date',
+					y: 'bar',
+					style: dateStyle
+				}
+			]
+		})
+
 
 		this.dirty()
 	}

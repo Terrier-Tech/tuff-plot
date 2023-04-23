@@ -110,9 +110,9 @@ function getStringValues<T extends {}>(trace: PlotTrace<T>, col: keyof T): Array
  * @param trace
  * @param transform a transform to apply to the segmented values
  */
-function segmentValues<T extends {}>(trace: PlotTrace<T>, transform: Mat): Array<Vec[]> {
-    const xValues = getNumberValues(trace, trace.x)
-    const yValues = getNumberValues(trace, trace.y)
+function segmentValues<T extends {}>(trace: PlotTrace<T>, transform: Mat, xAxis: PlotAxis, yAxis: PlotAxis): Array<Vec[]> {
+    const xValues = getNumberValues(trace, trace.x, xAxis)
+    const yValues = getNumberValues(trace, trace.y, yAxis)
     let segment: Vec[] = []
     let segments: Array<Vec[]> = []
     xValues.forEach((x, index) => {
