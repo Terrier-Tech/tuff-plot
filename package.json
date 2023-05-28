@@ -20,6 +20,6 @@
     "@types/numeral": "^2.0.2",
     "dayjs": "^1.11.7",
     "numeral": "^2.0.6",
-    "tuff-core": "^0.24.1"
+    "tuff-core": "latest"
   }
 }
