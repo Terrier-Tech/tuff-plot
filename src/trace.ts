@@ -206,8 +206,11 @@ function renderPreview(parent: PartTag, trace: PlotTrace<any>) {
             }
             if (trace.marker) {
                 parent.svg('.marker', svg => {
+                    const size = trace.marker?.size || 10
+                    svg.attrs({viewBox: {width: size*2, height: size*2, x: 0, y: 0}})
+                    svg.attrs({width: size*2, height: size*2})
                     svg.g(g => {
-                        renderMarker(g, {x: 0, y: 0}, trace.marker!, style)
+                        renderMarker(g, {x: size, y: size}, trace.marker!, style)
                     })
                 })
             }
