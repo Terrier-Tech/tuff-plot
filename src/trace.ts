@@ -4,6 +4,10 @@ import {GTag, SvgBaseAttrs} from "tuff-core/svg"
 import { Vec } from "tuff-core/vec"
 import {PlotAxis} from "./axis"
 import dayjs from "dayjs"
+import { PartTag } from "tuff-core/parts"
+import { Logger } from "tuff-core/logging"
+
+const log = new Logger("Trace")
 
 export type XAxisName = 'top' | 'bottom'
 
@@ -43,6 +47,16 @@ export type PlotTrace<T extends {}> = {
     style?: TraceStyle
     marker?: MarkerStyle
 }
+
+/**
+ * Quantizes a number to within a reasonable precision.
+ * @param num a number
+ * @returns the quantized number
+ */
+function quantizeValue(num: number): string {
+    return num.toString()
+}
+
 
 /**
  * Get all of the values for the given column as numbers.
@@ -179,12 +193,37 @@ function renderMarker(parent: GTag, p: Vec, marker: MarkerStyle, style: TraceSty
     }
 }
 
+function renderPreview(parent: PartTag, trace: PlotTrace<any>) {
+    const style = trace.style || {}
+    log.info(`Rendering trace preview`, trace, style)
+    switch (trace.type) {
+        case 'bar':
+            parent.div('.bar').css({backgroundColor: style.fill})
+            return
+        case 'scatter':
+            if (style.stroke) {
+                parent.div('.stroke').css({backgroundColor: style.stroke, height: `${style.strokeWidth}px`})
+            }
+            if (trace.marker) {
+                parent.svg('.marker', svg => {
+                    svg.g(g => {
+                        renderMarker(g, {x: 0, y: 0}, trace.marker!, style)
+                    })
+                })
+            }
+            return
+
+    }
+}
+
 const Trace = {
+    quantizeValue,
     getNumberValues,
     getStringValues,
     segmentValues,
     pointsString,
-    renderMarker
+    renderMarker,
+    renderPreview
 }
 
 export default Trace

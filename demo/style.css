@@ -102,6 +102,7 @@ button:focus-visible {
 	--label-font-size: 12px;
 	--axis-title-font-size: 12px;
 	--axis-title-font-weight: bold;
+	--border-radius: 4px;
 	width: 600px;
 	max-width: 100%;
 	min-height: 400px;
@@ -131,6 +132,49 @@ button:focus-visible {
 			}
 			&.right {
 				transform: rotate(90deg);
+			}
+		}
+		& .hover rect {
+			fill: transparent;
+			stroke: none;
+			&:hover {
+				fill:rgba(255, 0, 0, 0.5);
+			}
+		}
+	}
+	& .tooltip {
+		position: absolute;
+		border: 1px solid var(--axis-stroke);
+		background-color: var(--plot-background);
+		border-radius: var(--border-radius);
+		& .label, & .line {
+			color: var(--label-fill);
+			font-size: var(--label-font-size);
+			padding: 0.5em;
+			line-height: 1;
+		}
+		& .label {
+			border-bottom: 1px solid var(--axis-stroke);
+		}
+		& .line {
+			display: flex;
+			gap: 1em;
+			align-items: center;
+			& .value {
+				flex: 1 1 auto;
+			}
+			& .preview {
+				flex: 0 0 30px;
+				height: 1em;
+				display: flex;
+				align-items: center;
+				& .bar {
+					height: 100%;
+					flex: 1 1 auto;
+				}
+				& .stroke {
+					width: 100%;
+				}
 			}
 		}
 	}

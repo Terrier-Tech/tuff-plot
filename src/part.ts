@@ -8,9 +8,10 @@ import Trace, { defaultColorPalette, PlotTrace } from "./trace"
 import Axis, { AxisStyle, LabelStyle, PlotAxis } from "./axis"
 import * as mat from "tuff-core/mat"
 import {GTag, LineTagAttrs, PolylineTagAttrs, TextTagAttrs} from "tuff-core/svg"
-import * as objects from "tuff-core/objects"
+import Objects, * as objects from "tuff-core/objects"
 import { Vec } from "tuff-core/vec"
-import {arrays} from "tuff-core"
+import {arrays, messages} from "tuff-core"
+import Html, { DivTag } from "tuff-core/html"
 
 const log = new Logger("PlotPart")
 
@@ -32,6 +33,21 @@ type InternalAxis = PlotAxis & {
     side?: PlotSide
 }
 
+type HoverPoint = {
+    trace: InternalTrace<any>
+    x: string
+    y: string
+}
+
+type HoverRect = {
+    key: string
+    x: number
+    y: number
+    width: number
+    height: number
+    label: string
+}
+
 function roundPixel(p: number): number {
     return Math.floor(p) + 0.5
 }
@@ -45,6 +61,10 @@ export class PlotPart extends Part<PlotState> {
 
     private traces: InternalTrace<any>[] = []
     private axes: InternalAxis[] = []
+    private hoverRects: HoverRect[] = []
+    private hoverPoints: Record<string, HoverPoint[]> = {}
+
+    private hoverEnterKey = messages.typedKey<{key: string, label: string}>()
 
     defaultAxisStyle: AxisStyle = {
         strokeWidth: 1
@@ -65,6 +85,12 @@ export class PlotPart extends Part<PlotState> {
 
     async init() {
         this.traces = this.state.traces
+
+        this.onMouseOver(this.hoverEnterKey, m => {
+            const points = this.hoverPoints[m.data.key] || []
+            log.info(`Hovering over ${m.data.key}`, points)
+            this.showTooltip(m.event, m.data.label, points)
+        })
     }
     
     render(parent: PartTag) {
@@ -93,6 +119,9 @@ export class PlotPart extends Part<PlotState> {
                             log.warn(`Don't know how to render trace type '${traceType}'`)
                     }
                 })
+            })
+            svg.g('.hover', hoverContainer => {
+                this.renderHoverRects(hoverContainer)
             })
         })
     }
@@ -211,11 +240,19 @@ export class PlotPart extends Part<PlotState> {
         }
 
         // compute the trace transforms
-        for (const trace of this.traces) {
+        this.hoverPoints = {}
+        this.traces.forEach((trace, index) => {
             const xAxis = axes[trace.xAxis || 'bottom']!
             const yAxis = axes[trace.yAxis || 'left']!
             this.computeTraceTransform(trace, xAxis, yAxis)
-        }
+            this.applyTraceStyleDefaults(trace, index)
+            this.accumulateHoverPoints(trace, xAxis, yAxis, this.hoverPoints)
+        })
+
+        // compute the hover rects
+        log.info(`Computed ${Object.values(this.hoverPoints).length} hover points`, this.hoverPoints)
+        this.hoverRects = this.computeHoverRects(this.hoverPoints)
+        log.info(`Computed ${this.hoverRects.length} hover rects`, this.hoverRects)
 
         // TODO: figure out how to mark parts dirty during update
         setTimeout(
@@ -236,6 +273,71 @@ export class PlotPart extends Part<PlotState> {
         trace.transform = transform
     }
 
+    private applyTraceStyleDefaults(trace: InternalTrace<any>, index: number) {
+        const style = trace.style ? {...trace.style} : {}
+
+        // ensure there's a trace type
+        trace.type ||= 'scatter'
+
+        const defaultColor = defaultColorPalette[index % defaultColorPalette.length]
+        log.info(`Default color for trace  ${index} is ${defaultColor}`, style)
+        // ensure it has either a stroke or fill
+        if (style.strokeWidth && !style.stroke) {
+            style.stroke = defaultColor
+        }
+        if ((trace.marker || trace.type=='bar') && !style.fill) {
+            style.fill = defaultColor
+        }
+        trace.style = style
+    }
+
+
+    private accumulateHoverPoints(trace: InternalTrace<any>, xAxis: PlotAxis, yAxis: PlotAxis, hoverPoints: Record<string, HoverPoint[]>) {
+        const xVals = Trace.getNumberValues(trace, trace.x, xAxis)
+        const yVals = Trace.getNumberValues(trace, trace.y, yAxis)
+        for (let i=0; i<xVals.length; i++) {
+            const x = xVals[i]!
+            const y = yVals[i]!
+            const pScreen = mat.transform(trace.transform!, {x, y})
+            const xQuant = Trace.quantizeValue(pScreen.x)
+            const xString = Axis.valueTitle(xAxis, x, xAxis.tickFormat) || ''
+            const yString = Axis.valueTitle(yAxis, y, yAxis.tickFormat) || ''
+            hoverPoints[xQuant] ||= []
+            hoverPoints[xQuant].push({
+                trace,
+                x: xString,
+                y: yString
+            })
+        }
+    }
+
+    /**
+     * Computes a list of rectangle definitions used by `renderHoverRects()`
+     * @param hoverPoints a collection of `HoverPoint`s mapped to x coordinates
+     * @returns an array of rectangle definitions
+     */
+    private computeHoverRects(hoverPoints: Record<string, HoverPoint[]>): HoverRect[] {
+        // for each set of hover points, make a rect that extends 
+        // halfway to the next set of points
+        const xs = arrays.sortBy(Object.keys(hoverPoints).map(x => {return {screen: parseFloat(x), key: x}}), 'screen')
+        const rects: HoverRect[] = []
+        for (let i = 0; i<xs.length; i++) {
+            const x = xs[i]
+            const x1 = i == 0 ? this.viewport.x : (xs[i-1].screen+x.screen)/2
+            const x2 = i == xs.length-1 ? this.viewport.width+this.viewport.x : (xs[i+1].screen+x.screen)/2
+            const points = hoverPoints[x.key]
+            rects.push({
+                x: x1,
+                y: this.viewport.y,
+                width: x2 - x1,
+                height: this.viewport.height,
+                label: points[0].x,
+                key: x.key
+            })
+        }
+        return rects
+    }
+
 
     private renderScatterTrace<T extends {}>(parent: GTag, trace: InternalTrace<T>, index: number, _: number) {
         // break the trace into segments and transform them
@@ -245,15 +347,7 @@ export class PlotPart extends Part<PlotState> {
         const segments = Trace.segmentValues(trace, transform, xAxis, yAxis)
         log.info(`trace ${trace.id} has ${segments.length} segments`, segments)
 
-        // ensure it has either a stroke or fill
         const style = {...trace.style}
-        const defaultColor = defaultColorPalette[index % defaultColorPalette.length]
-        if (style.strokeWidth && !style.stroke) {
-            style.stroke = defaultColor
-        }
-        if (trace.marker && !style.fill) {
-            style.fill = defaultColor
-        }
 
         if (style.stroke?.length) {
             for (const segment of segments) {
@@ -274,11 +368,7 @@ export class PlotPart extends Part<PlotState> {
     }
 
     private renderBarTrace<T extends {}>(parent: GTag, trace: InternalTrace<T>, index: number, numTraces: number) {
-        // ensure it has either a stroke or fill
         const style = {...trace.style}
-        if (!style.stroke && !style.fill) {
-            style.fill = defaultColorPalette[index % defaultColorPalette.length]
-        }
 
         // get the raw points
         const xAxis = trace._xAxis!
@@ -461,6 +551,51 @@ export class PlotPart extends Part<PlotState> {
                 break
         }
         parent.text(".label", {x: pos.x, y: pos.y, text: text}, attrs)
+    }
+
+    /**
+     * Renders a series of transparent rectangles that emit mouseover events so we can track which points the user is hovering over.
+     * @param parent the parent group tag
+     */
+    renderHoverRects(parent: GTag) {
+        for (const rect of this.hoverRects) {
+            parent.rect(Objects.slice(rect, 'x' ,'y', 'width', 'height'))
+                .data({label: rect.label, key: rect.key})
+                .emitMouseOver(this.hoverEnterKey, {key: rect.key, label: rect.label})
+        }
+    }
+
+    showTooltip(event: MouseEvent, label: string, points: HoverPoint[]) {
+        // delete the existing tooltip
+        const existing = this.element?.getElementsByClassName('tooltip')
+        if (existing?.length) {
+            for (let i=0; i<existing.length; i++) {
+                existing.item(i)?.remove()
+            }
+        }
+
+        // render the new tooltip
+        const tooltip = Html.createElement('div', div => {
+            this.renderTooltip(div, label, points)
+        })
+
+        // position the element in the DOM
+        this.element?.append(tooltip)
+    }
+
+    renderTooltip(parent: DivTag, label: string, points: HoverPoint[]) {
+        parent.class('tooltip')
+        parent.div('.label').text(label)
+        for (const point of points) {
+            const trace = point.trace
+            log.info(`Rendering tooltip preview for ${point}`, trace)
+            parent.div('.line', line => {
+                line.div('.preview', preview => {
+                    Trace.renderPreview(preview, trace)
+                })
+                line.div('.value').text(point.y)
+            })
+        }
     }
 
 }
