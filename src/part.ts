@@ -66,6 +66,9 @@ export class PlotPart extends Part<PlotState> {
 
     private hoverEnterKey = messages.typedKey<{key: string, label: string}>()
 
+    // key for any global mouse events on the part
+    globalMouseKey = messages.untypedKey()
+
     defaultAxisStyle: AxisStyle = {
         strokeWidth: 1
     }
@@ -88,8 +91,14 @@ export class PlotPart extends Part<PlotState> {
 
         this.onMouseOver(this.hoverEnterKey, m => {
             const points = this.hoverPoints[m.data.key] || []
-            log.info(`Hovering over ${m.data.key}`, points)
             this.showTooltip(m.event, m.data.label, points)
+        })
+
+        this.onMouseLeave(this.globalMouseKey, m => {
+            if (m.event.target == this.getPlotContainer()) {
+                log.info(`Mouse leave`, m.event.target)
+                this.clearTooltip()
+            }
         })
     }
     
@@ -97,39 +106,49 @@ export class PlotPart extends Part<PlotState> {
 		if (this.outerSize.width == 0) {
             return
         }
-        parent.svg('.tuff-plot', svg => {
-            svg.attrs({viewBox: {...this.outerSize, x: 0, y: 0}})
-            svg.g('.axes', axes => {
-                for (const axis of this.axes) {
-                    this.renderAxis(axes, axis)
-                }
-            })
-            const numTraces = this.traces.length
-            this.traces.forEach((trace, index) => {
-                svg.g(".trace", traceParent => {
-                    const traceType = trace.type || 'scatter'
-                    switch (traceType) {
-                        case 'scatter':
-                            this.renderScatterTrace(traceParent, trace, index, numTraces)
-                            break
-                        case 'bar':
-                            this.renderBarTrace(traceParent, trace, index, numTraces)
-                            break
-                        default:
-                            log.warn(`Don't know how to render trace type '${traceType}'`)
+        parent.div('.tuff-plot-container', container => {
+            container.emitMouseLeave(this.globalMouseKey)
+            container.svg('.tuff-plot', svg => {
+                svg.attrs({viewBox: {...this.outerSize, x: 0, y: 0}})
+                svg.g('.axes', axes => {
+                    for (const axis of this.axes) {
+                        this.renderAxis(axes, axis)
                     }
                 })
-            })
-            svg.g('.hover', hoverContainer => {
-                this.renderHoverRects(hoverContainer)
+                const numTraces = this.traces.length
+                this.traces.forEach((trace, index) => {
+                    svg.g(".trace", traceParent => {
+                        const traceType = trace.type || 'scatter'
+                        switch (traceType) {
+                            case 'scatter':
+                                this.renderScatterTrace(traceParent, trace, index, numTraces)
+                                break
+                            case 'bar':
+                                this.renderBarTrace(traceParent, trace, index, numTraces)
+                                break
+                            default:
+                                log.warn(`Don't know how to render trace type '${traceType}'`)
+                        }
+                    })
+                })
+                svg.g('.hover', hoverContainer => {
+                    this.renderHoverRects(hoverContainer)
+                })
             })
         })
     }
 
+    /**
+     * Only call this after it's been rendered at least once.
+     * @returns the plot container element
+     */
+    getPlotContainer(): HTMLElement {
+        return this.element!.getElementsByClassName('tuff-plot-container')[0] as HTMLElement
+    }
     
-	update(elem: HTMLElement) {
+	update(_elem: HTMLElement) {
 		if (this.viewport.width == 0) {
-			this.computeLayout(elem)
+			this.computeLayout(_elem)
 		}
 	}
 
@@ -145,9 +164,8 @@ export class PlotPart extends Part<PlotState> {
         const pad = this.computePad()
         this.traces = this.state.traces
 
-        log.info(`Computing plot layout`, elem)
         this.outerSize = {width: elem.clientWidth, height: elem.clientHeight}
-        log.info(`Size is ${this.outerSize.width} x ${this.outerSize.height}`)
+        log.info(`Outer size is ${this.outerSize.width} x ${this.outerSize.height}`, elem)
 
         // create default axes
         const axes = this.state.layout.axes || {}
@@ -262,7 +280,12 @@ export class PlotPart extends Part<PlotState> {
         
 	}
 
-
+    /**
+     * Computes the transform to convert coordinates in the given trace's space to screen space.
+     * @param trace 
+     * @param xAxis 
+     * @param yAxis 
+     */
     private computeTraceTransform(trace: InternalTrace<any>, xAxis: PlotAxis, yAxis: PlotAxis) {
         log.info(`Computing ${trace.id} transform`, trace, xAxis, yAxis)
         const xRange = xAxis.computedRange || {min: 0, max: 1}
@@ -273,6 +296,11 @@ export class PlotPart extends Part<PlotState> {
         trace.transform = transform
     }
 
+    /**
+     * Ensures that the given trace has either a stroke or fill, and sets the color according the rendering index.
+     * @param trace the trace receiving the default style
+     * @param index the index of the trace in the list of traces to plot
+     */
     private applyTraceStyleDefaults(trace: InternalTrace<any>, index: number) {
         const style = trace.style ? {...trace.style} : {}
 
@@ -292,6 +320,13 @@ export class PlotPart extends Part<PlotState> {
     }
 
 
+    /**
+     * Add hover points to `hoverPoints` based on all of the trace's x values
+     * @param trace the current trace
+     * @param xAxis the x axis on which the trace is plotted
+     * @param yAxis the y axis on which the trace is plotted
+     * @param hoverPoints an existing map of hover points
+     */
     private accumulateHoverPoints(trace: InternalTrace<any>, xAxis: PlotAxis, yAxis: PlotAxis, hoverPoints: Record<string, HoverPoint[]>) {
         const xVals = Trace.getNumberValues(trace, trace.x, xAxis)
         const yVals = Trace.getNumberValues(trace, trace.y, yAxis)
@@ -338,8 +373,14 @@ export class PlotPart extends Part<PlotState> {
         return rects
     }
 
-
-    private renderScatterTrace<T extends {}>(parent: GTag, trace: InternalTrace<T>, index: number, _: number) {
+    /**
+     * Renders the given trace as a scatter plot.
+     * @param parent the containing g tag
+     * @param trace the trace to render
+     * @param _index the index of the trace in the render list
+     * @param _numTraces the number of traces being rendered 
+     */
+    private renderScatterTrace<T extends {}>(parent: GTag, trace: InternalTrace<T>, _index: number, _numTraces: number) {
         // break the trace into segments and transform them
         const transform = trace.transform || mat.identity()
         const xAxis = trace._xAxis!
@@ -367,6 +408,13 @@ export class PlotPart extends Part<PlotState> {
         }
     }
 
+    /**
+     * Renders the given trace as a bar plot.
+     * @param parent the containing g tag
+     * @param trace the trace to render
+     * @param index the index of the trace in the render list
+     * @param numTraces the number of traces being rendered 
+     */
     private renderBarTrace<T extends {}>(parent: GTag, trace: InternalTrace<T>, index: number, numTraces: number) {
         const style = {...trace.style}
 
@@ -565,22 +613,35 @@ export class PlotPart extends Part<PlotState> {
         }
     }
 
-    showTooltip(event: MouseEvent, label: string, points: HoverPoint[]) {
-        // delete the existing tooltip
+    /**
+     * Removes any existing tooltip from the DOM.
+     */
+    clearTooltip() {
         const existing = this.element?.getElementsByClassName('tooltip')
         if (existing?.length) {
             for (let i=0; i<existing.length; i++) {
                 existing.item(i)?.remove()
             }
         }
+    }
+
+    showTooltip(event: MouseEvent, label: string, points: HoverPoint[]) {
+        this.clearTooltip()
+
+        const root = this.element!
+
+        // determine where the tooltip should be placed in the DOM
+        const rootRect = root.getBoundingClientRect()
+        const targetRect = (event.target as HTMLElement).getBoundingClientRect()
+        const targetCenter = targetRect.x + targetRect.width/2
+        const xDiff = targetCenter - rootRect.left
 
         // render the new tooltip
         const tooltip = Html.createElement('div', div => {
+            div.css({left: `${xDiff}px`})
             this.renderTooltip(div, label, points)
         })
-
-        // position the element in the DOM
-        this.element?.append(tooltip)
+        this.getPlotContainer().append(tooltip)
     }
 
     renderTooltip(parent: DivTag, label: string, points: HoverPoint[]) {
@@ -588,7 +649,6 @@ export class PlotPart extends Part<PlotState> {
         parent.div('.label').text(label)
         for (const point of points) {
             const trace = point.trace
-            log.info(`Rendering tooltip preview for ${point}`, trace)
             parent.div('.line', line => {
                 line.div('.preview', preview => {
                     Trace.renderPreview(preview, trace)

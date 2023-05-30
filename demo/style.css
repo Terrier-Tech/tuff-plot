@@ -96,6 +96,13 @@ button:focus-visible {
 }
 
 .tuff-part-PlotPart {
+	min-height: 400px;
+	width: 600px;
+	max-width: 100%;
+	position: relative;
+}
+
+.tuff-plot-container {
 	--axis-stroke: #fff;
 	--plot-background: #1b1b1b;
 	--label-fill: #fff;
@@ -103,10 +110,13 @@ button:focus-visible {
 	--axis-title-font-size: 12px;
 	--axis-title-font-weight: bold;
 	--border-radius: 4px;
-	width: 600px;
-	max-width: 100%;
-	min-height: 400px;
-	position: relative;
+	--trace-preview-size: 24px;
+	--tool-pad: 24px;
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
 	background: var(--plot-background);
 	& > svg {
 		position: absolute;
@@ -146,10 +156,13 @@ button:focus-visible {
 	}
 	& .tooltip {
 		position: absolute;
+		top: var(--tool-pad);
 		border: 1px solid var(--axis-stroke);
 		background-color: var(--plot-background);
 		border-radius: var(--border-radius);
 		z-index: 1;
+		pointer-events: none;
+		transform: translate(-50%, 0);
 		& .label, & .line {
 			color: var(--label-fill);
 			font-size: var(--label-font-size);
@@ -167,7 +180,8 @@ button:focus-visible {
 				flex: 1 1 auto;
 			}
 			& .preview {
-				flex: 0 0 30px;
+				flex: 0 0 var(--trace-preview-size);
+				width: var(--trace-preview-size);
 				height: 1em;
 				display: flex;
 				align-items: center;

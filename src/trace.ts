@@ -195,7 +195,6 @@ function renderMarker(parent: GTag, p: Vec, marker: MarkerStyle, style: TraceSty
 
 function renderPreview(parent: PartTag, trace: PlotTrace<any>) {
     const style = trace.style || {}
-    log.info(`Rendering trace preview`, trace, style)
     switch (trace.type) {
         case 'bar':
             parent.div('.bar').css({backgroundColor: style.fill})
