@@ -1,17 +1,16 @@
-import { Box} from "tuff-core/box"
-import * as box from "tuff-core/box"
 import { Logger } from "tuff-core/logging"
-import { Mat } from "tuff-core/mat"
 import { Part, PartTag } from "tuff-core/parts"
 import Layout, { PlotLayout, PlotSide } from "./layout"
 import Trace, { defaultColorPalette, PlotTrace } from "./trace"
 import Axis, { AxisStyle, LabelStyle, PlotAxis } from "./axis"
-import * as mat from "tuff-core/mat"
 import {GTag, LineTagAttrs, PolylineTagAttrs, TextTagAttrs} from "tuff-core/svg"
-import Objects, * as objects from "tuff-core/objects"
-import { Vec } from "tuff-core/vec"
-import {arrays, messages} from "tuff-core"
+import Objects from "tuff-core/objects"
 import Html, { DivTag } from "tuff-core/html"
+import Mats, {Mat} from "tuff-core/mats"
+import Messages from "tuff-core/messages"
+import Boxes, {Box} from "tuff-core/boxes"
+import Arrays from "tuff-core/arrays"
+import { Vec } from "tuff-core/vecs"
 
 const log = new Logger("PlotPart")
 
@@ -64,10 +63,10 @@ export class PlotPart extends Part<PlotState> {
     private hoverRects: HoverRect[] = []
     private hoverPoints: Record<string, HoverPoint[]> = {}
 
-    private hoverEnterKey = messages.typedKey<{key: string, label: string}>()
+    private hoverEnterKey = Messages.typedKey<{key: string, label: string}>()
 
     // key for any global mouse events on the part
-    globalMouseKey = messages.untypedKey()
+    globalMouseKey = Messages.untypedKey()
 
     defaultAxisStyle: AxisStyle = {
         strokeWidth: 1
@@ -154,7 +153,7 @@ export class PlotPart extends Part<PlotState> {
 
     outerSize: Size = {width: 0, height: 0}
     padding: Padding = {top: 0, left: 0, right: 0, bottom: 0}
-    viewport: Box = box.make(0, 0, 0, 0)
+    viewport: Box = Boxes.make(0, 0, 0, 0)
 
     private computePad(): number {
         return this.state.layout.pad || Layout.Defaults.pad
@@ -220,7 +219,7 @@ export class PlotPart extends Part<PlotState> {
         log.info("Padding: ", this.padding)
 
         // size the viewport
-        this.viewport = box.make(
+        this.viewport = Boxes.make(
             this.padding.left,
             this.padding.top,
             this.outerSize.width - this.padding.left - this.padding.right,
@@ -291,8 +290,8 @@ export class PlotPart extends Part<PlotState> {
         const xRange = xAxis.computedRange || {min: 0, max: 1}
         const yRange = yAxis.computedRange || {min: 0, max: 1}
         // flip the y range because the SVG coordinate space is upside down
-        const dataBox = box.make(xRange.min, yRange.max, xRange.max - xRange.min, yRange.min - yRange.max)
-        let transform = mat.fromBoxes(dataBox, this.viewport)
+        const dataBox = Boxes.make(xRange.min, yRange.max, xRange.max - xRange.min, yRange.min - yRange.max)
+        let transform = Mats.fromBoxes(dataBox, this.viewport)
         trace.transform = transform
     }
 
@@ -333,7 +332,7 @@ export class PlotPart extends Part<PlotState> {
         for (let i=0; i<xVals.length; i++) {
             const x = xVals[i]!
             const y = yVals[i]!
-            const pScreen = mat.transform(trace.transform!, {x, y})
+            const pScreen = Mats.transform(trace.transform!, {x, y})
             const xQuant = Trace.quantizeValue(pScreen.x)
             const xString = Axis.valueTitle(xAxis, x, xAxis.tickFormat) || ''
             const yString = Axis.valueTitle(yAxis, y, yAxis.tickFormat) || ''
@@ -354,7 +353,7 @@ export class PlotPart extends Part<PlotState> {
     private computeHoverRects(hoverPoints: Record<string, HoverPoint[]>): HoverRect[] {
         // for each set of hover points, make a rect that extends 
         // halfway to the next set of points
-        const xs = arrays.sortBy(Object.keys(hoverPoints).map(x => {return {screen: parseFloat(x), key: x}}), 'screen')
+        const xs = Arrays.sortBy(Object.keys(hoverPoints).map(x => {return {screen: parseFloat(x), key: x}}), 'screen')
         const rects: HoverRect[] = []
         for (let i = 0; i<xs.length; i++) {
             const x = xs[i]
@@ -382,7 +381,7 @@ export class PlotPart extends Part<PlotState> {
      */
     private renderScatterTrace<T extends {}>(parent: GTag, trace: InternalTrace<T>, _index: number, _numTraces: number) {
         // break the trace into segments and transform them
-        const transform = trace.transform || mat.identity()
+        const transform = trace.transform || Mats.identity()
         const xAxis = trace._xAxis!
         const yAxis = trace._yAxis!
         const segments = Trace.segmentValues(trace, transform, xAxis, yAxis)
@@ -392,7 +391,7 @@ export class PlotPart extends Part<PlotState> {
 
         if (style.stroke?.length) {
             for (const segment of segments) {
-                const lineArgs: PolylineTagAttrs = objects.slice(style || {}, 'stroke', 'strokeWidth', 'strokeDasharray', 'strokeLinecap', 'strokeLinejoin')
+                const lineArgs: PolylineTagAttrs = Objects.slice(style || {}, 'stroke', 'strokeWidth', 'strokeDasharray', 'strokeLinecap', 'strokeLinejoin')
                 lineArgs.fill = 'none'
                 lineArgs.points = Trace.pointsString(segment)
                 parent.polyline(lineArgs)
@@ -423,7 +422,7 @@ export class PlotPart extends Part<PlotState> {
         const yAxis = trace._yAxis!
         const xValues = Trace.getNumberValues(trace, trace.x, xAxis)
         const yValues = Trace.getNumberValues(trace, trace.y, yAxis)
-        const points = arrays.range(0, xValues.length).map(i => {
+        const points = Arrays.range(0, xValues.length).map(i => {
             const x = xValues[i] || 0
             const y = yValues[i] || 0
             return {x, y}
@@ -453,9 +452,9 @@ export class PlotPart extends Part<PlotState> {
         }
 
         // transform and render the boxes
-        const transform = trace.transform || mat.identity()
+        const transform = trace.transform || Mats.identity()
         for (const box of boxes) {
-            let screenBox = mat.transformBox(transform, box)
+            let screenBox = Mats.transformBox(transform, box)
             if (screenBox.height < 0) {
                 screenBox = {...screenBox, y: screenBox.y + screenBox.height, height: -screenBox.height}
             }

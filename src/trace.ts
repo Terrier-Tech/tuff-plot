@@ -1,7 +1,6 @@
-import * as mat from "tuff-core/mat"
-import { Mat } from "tuff-core/mat"
+import Mats, {Mat} from "tuff-core/mats"
 import {GTag, SvgBaseAttrs} from "tuff-core/svg"
-import { Vec } from "tuff-core/vec"
+import { Vec } from "tuff-core/vecs"
 import {PlotAxis} from "./axis"
 import dayjs from "dayjs"
 import { PartTag } from "tuff-core/parts"
@@ -14,8 +13,6 @@ export type XAxisName = 'top' | 'bottom'
 export type YAxisName = 'left' | 'right'
 
 export type TraceStyle = Pick<SvgBaseAttrs, 'fill' | 'fillOpacity' | 'fillRule' | 'opacity' | 'stroke' | 'strokeOpacity' | 'strokeWidth' | 'strokeDasharray' | 'strokeDashoffset' | 'strokeLinecap' | 'strokeLinejoin' | 'strokeMiterlimit'> & {
-     
-
 }
 
 export const defaultColorPalette = [
@@ -141,10 +138,11 @@ function segmentValues<T extends {}>(trace: PlotTrace<T>, transform: Mat, xAxis:
             }
         }
         else {
-            segment.push(mat.transform(transform, {x, y}))
+            segment.push(Mats.transform(transform, {x, y}))
         }
     })
     segments.push(segment)
+    log.debug(`Segmented values`, xValues, yValues, segments)
     return segments
 }
 

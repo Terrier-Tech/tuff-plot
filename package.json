@@ -1,14 +1,18 @@
 {
   "name": "tuff-plot",
-  "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
+  "files": [
+    "*"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "check": "tsc",
     "test": "vitest",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prepub": "tsc && mkdir -p dist && rm -rf dist/* && cp -a ./src/*.ts ./dist/ && cp ./package.json ./dist/ && cp ./README.md ./dist/",
+    "pub": "npm publish ./dist"
   },
   "devDependencies": {
     "postcss-nesting": "^10.2.0",
@@ -21,5 +25,6 @@
     "dayjs": "^1.11.7",
     "numeral": "^2.0.6",
     "tuff-core": "latest"
-  }
+  },
+  "license": "MIT"
 }

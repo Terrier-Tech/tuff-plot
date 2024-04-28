@@ -1,4 +1,4 @@
-import * as arrays from "tuff-core/arrays"
+import Arrays from "tuff-core/arrays"
 import { Part, PartTag } from "tuff-core/parts"
 import { PlotPart } from "../src/part"
 import "./style.css"
@@ -41,7 +41,7 @@ export class App extends Part<{}> {
 
 	makeSimple() {
 
-		const lineData = arrays.range(0, 100).map(i => {
+		const lineData = Arrays.range(0, 100).map(i => {
 			return {
 				x: i / 20,
 				foo: Math.sin(i / 20) * 1.5,
@@ -49,7 +49,7 @@ export class App extends Part<{}> {
 			}
 		})
 
-		const pointData = arrays.range(0, 100, 5).map(i => {
+		const pointData = Arrays.range(0, 100, 5).map(i => {
 			return {
 				x: i / 20,
 				baz: Math.cos(i / 12 - 2) * 1.25
@@ -140,7 +140,7 @@ export class App extends Part<{}> {
 		// random walk time-based data
 		let foo = 0
 		let bar = 0
-		const dateData = arrays.range(0, 60).map(i => {
+		const dateData = Arrays.range(0, 60).map(i => {
 			foo += (Math.random() - 0.5)
 			bar += (Math.random() - 0.5)
 			return {

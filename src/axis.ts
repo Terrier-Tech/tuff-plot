@@ -1,9 +1,9 @@
-import { arrays } from "tuff-core"
 import { Logger } from "tuff-core/logging"
 import { SvgBaseAttrs } from "tuff-core/svg"
 import Trace, { PlotTrace } from "./trace"
 import dayjs from 'dayjs'
 import numeral from "numeral"
+import Arrays from "tuff-core/arrays"
 
 const log = new Logger("PlotAxis")
 
@@ -90,8 +90,8 @@ function updateRange<T extends {}>(axis: PlotAxis, trace: PlotTrace<T>, col: key
     }
 
     const values = Trace.getNumberValues(trace, col, axis)
-    const min = arrays.min(arrays.compact(values))
-    const max = arrays.max(arrays.compact(values))
+    const min = Arrays.min(Arrays.compact(values))
+    const max = Arrays.max(Arrays.compact(values))
     axis.computedRange = extendRange({min, max}, axis.computedRange)
     log.info(`Updating axis range with ${col.toString()} to`, axis.computedRange)
 
@@ -148,7 +148,7 @@ function computeTicks(axis: PlotAxis): boolean {
 
     // grouped
     if (axis.type == 'group') {
-        axis.ticks = arrays.range(Math.ceil(axis.computedRange.min), Math.floor(axis.computedRange.max))
+        axis.ticks = Arrays.range(Math.ceil(axis.computedRange.min), Math.floor(axis.computedRange.max))
         log.info('Computed group ticks', axis)
         return true
     }
@@ -156,7 +156,7 @@ function computeTicks(axis: PlotAxis): boolean {
     // number or time
     const step = rangeStep(axis.computedRange, axis.type)
     log.info(`Step for ${axis.computedRange.min} to ${axis.computedRange.max} is ${step}`)
-    axis.ticks = arrays.range(axis.computedRange.min, axis.computedRange.max, step)
+    axis.ticks = Arrays.range(axis.computedRange.min, axis.computedRange.max, step)
     log.info('Computed number ticks', axis)
     return true
 }
