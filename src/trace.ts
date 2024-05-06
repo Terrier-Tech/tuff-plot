@@ -43,6 +43,7 @@ export type PlotTrace<T extends {}> = {
     data: T[]
     style?: TraceStyle
     marker?: MarkerStyle
+    title?: string
 }
 
 /**

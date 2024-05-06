@@ -74,6 +74,7 @@ export class App extends Part<{}> {
 					data: lineData,
 					x: 'x',
 					y: 'bar',
+					title: "Bar",
 					style: lineStyle
 				},
 				{
@@ -122,6 +123,7 @@ export class App extends Part<{}> {
 					type: 'bar',
 					x: 'name',
 					y: 'branch1',
+					title: "Branch 1",
 					style: barStyle
 				},
 				{
@@ -129,6 +131,7 @@ export class App extends Part<{}> {
 					type: 'bar',
 					x: 'name',
 					y: 'branch2',
+					title: "Branch 2",
 					style: barStyle
 				}
 			]

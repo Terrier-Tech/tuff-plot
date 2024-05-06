@@ -652,6 +652,8 @@ export class PlotPart extends Part<PlotState> {
                 line.div('.preview', preview => {
                     Trace.renderPreview(preview, trace)
                 })
+                const title = trace.title || trace.y.toString()
+                line.div('.title').text(title + ':')
                 line.div('.value').text(point.y)
             })
         }
