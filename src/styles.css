@@ -25,7 +25,7 @@
 		right: 0;
 		bottom: 0;
 		z-index: 0;
-		& .axis, & .tick {
+		& .axis-line, & .tick {
 			stroke: var(--tuff-plot-axis-stroke);
 		}
 		& .label {

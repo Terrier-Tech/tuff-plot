@@ -110,11 +110,26 @@ export class PlotPart extends Part<PlotState> {
             container.emitMouseLeave(this.globalMouseKey)
             container.svg('.tuff-plot', svg => {
                 svg.attrs({viewBox: {...this.outerSize, x: 0, y: 0}})
-                svg.g('.axes', axes => {
+
+                // grid gets rendered first so that the axes are on top
+                svg.g('.grids', axes => {
                     for (const axis of this.axes) {
-                        this.renderAxis(axes, axis)
+                        axes.g('.grid', axisGroup => {
+                            this.renderAxisGrid(axisGroup, axis)
+                        }).class(axis.side || 'unknown')
                     }
                 })
+
+                // axes
+                svg.g('.axes', axes => {
+                    for (const axis of this.axes) {
+                        axes.g('.axis', axisGroup => {
+                            this.renderAxis(axisGroup, axis)
+                        }).class(axis.side || 'unknown')
+                    }
+                })
+
+                // traces
                 const numTraces = this.traces.length
                 this.traces.forEach((trace, index) => {
                     svg.g(".trace", traceParent => {
@@ -464,13 +479,10 @@ export class PlotPart extends Part<PlotState> {
         }
     }
 
-    private renderAxis(parent: GTag, axis: InternalAxis) {
-        const style = axis.style || this.defaultAxisStyle
-        const side = axis.side || 'bottom'
-        const pad = this.computePad()
-        const orientation = (side == 'bottom' || side == 'top') ? 'horizontal' : 'vertical'
-        log.info(`Rendering axis on ${side}`, axis)
+    private computeAxisMetrics(axis: InternalAxis) {
         const vp = this.viewport
+        const side = axis.side || 'bottom'
+        const orientation = (side == 'bottom' || side == 'top') ? 'horizontal' : 'vertical'
         const line = {
             x1: roundPixel(vp.x), 
             x2: roundPixel(vp.x + vp.width), 
@@ -492,52 +504,60 @@ export class PlotPart extends Part<PlotState> {
                 line.y1 = line.y2
                 break
         }
-        parent.line('.axis', line, style)
         const screenSpan = orientation == 'horizontal' ? line.x2 - line.x1 : line.y2 - line.y1
+
+        return {
+            line,
+            orientation,
+            side,
+            screenSpan
+        }
+    }
+
+    private renderAxis(parent: GTag, axis: InternalAxis) {
+        const vp = this.viewport
+        const style = axis.style || this.defaultAxisStyle
+        const pad = this.computePad()
+        const m = this.computeAxisMetrics(axis)
+        log.info(`Rendering axis on ${m.side}`, axis)
 
         // ticks and grid
         const tickLength = axis.tickLength || 0
         const range = axis.computedRange
         const labelStyle = axis.labelStyle || this.defaultLabelStyle
-        const gridStyle = axis.gridStyle || {}
         if (tickLength && axis.ticks && range) {
             for (const t of axis.ticks) {
-                let tScreen = (t-range.min)/(range.max-range.min) * screenSpan
-                if (orientation == 'vertical') {
-                    tScreen = screenSpan - tScreen
+                let tScreen = (t-range.min)/(range.max-range.min) * m.screenSpan
+                if (m.orientation == 'vertical') {
+                    tScreen = m.screenSpan - tScreen
                 }
                 let tickPoints: LineTagAttrs | null = null
-                let gridPoints: LineTagAttrs | null = null
-                switch (side) {
+                switch (m.side) {
                     case 'left':
-                        tickPoints = {x1: line.x1-tickLength, x2: line.x1, y1: line.y1+tScreen, y2: line.y1+tScreen}
-                        gridPoints = {x1: line.x1, x2: line.x1+vp.width, y1: line.y1+tScreen, y2: line.y1+tScreen}
+                        tickPoints = {x1: m.line.x1-tickLength, x2: m.line.x1, y1: m.line.y1+tScreen, y2: m.line.y1+tScreen}
                         break
                     case 'right':
-                        tickPoints = {x1: line.x1, x2: line.x1+tickLength, y1: line.y1+tScreen, y2: line.y1+tScreen}
-                        gridPoints = {x1: line.x1, x2: line.x1-vp.width, y1: line.y1+tScreen, y2: line.y1+tScreen}
+                        tickPoints = {x1: m.line.x1, x2: m.line.x1+tickLength, y1: m.line.y1+tScreen, y2: m.line.y1+tScreen}
                         break
                     case 'top':
-                        tickPoints = {x1: line.x1+tScreen, x2: line.x1+tScreen, y1: line.y1-tickLength, y2: line.y1}
-                        gridPoints = {x1: line.x1+tScreen, x2: line.x1+tScreen, y1: line.y1, y2: line.y1+vp.height}
+                        tickPoints = {x1: m.line.x1+tScreen, x2: m.line.x1+tScreen, y1: m.line.y1-tickLength, y2: m.line.y1}
                         break
                     case 'bottom':
-                        tickPoints = {x1: line.x1+tScreen, x2: line.x1+tScreen, y1: line.y2 + tickLength, y2: line.y2}
-                        gridPoints = {x1: line.x1+tScreen, x2: line.x1+tScreen, y1: line.y2, y2: line.y2-vp.height}
+                        tickPoints = {x1: m.line.x1+tScreen, x2: m.line.x1+tScreen, y1: m.line.y2 + tickLength, y2: m.line.y2}
                         break
                 }
                 if (tickPoints) {
                     parent.line('.tick', tickPoints, style)
                     const text = Axis.valueTitle(axis, t, axis.tickFormat)
                     if (text) {
-                        this.renderTickLabel(parent, text, {x: tickPoints.x1!, y: tickPoints.y1!}, side, labelStyle)
+                        this.renderTickLabel(parent, text, {x: tickPoints.x1!, y: tickPoints.y1!}, m.side, labelStyle)
                     }
-                }
-                if (gridPoints) {
-                    parent.line('.grid', gridPoints, gridStyle)
                 }
             }
         }
+
+        // render the actual line
+        parent.line('.axis-line', m.line, style)
 
         // title
         const titleStyle = axis.titleStyle || this.defaultTitleStyle
@@ -545,31 +565,64 @@ export class PlotPart extends Part<PlotState> {
             const titleAttrs: TextTagAttrs = {...titleStyle}
             titleAttrs.classes ||= []
             titleAttrs.classes.push('axis-title')
-            titleAttrs.classes.push(orientation)
-            titleAttrs.classes.push(side)
+            titleAttrs.classes.push(m.orientation)
+            titleAttrs.classes.push(m.side)
             const offset = pad * 2 + tickLength + (titleStyle.fontSize||0)/2 + (labelStyle?.fontSize || 0)
-            switch (side) {
+            switch (m.side) {
                 case 'left':
-                    titleAttrs.x = line.x1 - offset
+                    titleAttrs.x = m.line.x1 - offset
                     break
                 case 'right':
-                    titleAttrs.x = line.x1 + offset
+                    titleAttrs.x = m.line.x1 + offset
                     break
                 case 'top':
-                    titleAttrs.y = line.y1 - offset
+                    titleAttrs.y = m.line.y1 - offset
                     break
                 case 'bottom':
-                    titleAttrs.y = line.y1 + offset
+                    titleAttrs.y = m.line.y1 + offset
                     break
             }
             let css: Partial<CSSStyleDeclaration> = {}
-            if (orientation == 'horizontal') {
+            if (m.orientation == 'horizontal') {
                 titleAttrs.x = vp.x + vp.width / 2
             } else { // vertical
                 titleAttrs.y = vp.y + vp.height / 2
                 css.transformOrigin = `${titleAttrs.x}px ${titleAttrs.y}px`
             }
             parent.text(titleAttrs).css(css).textContent(axis.title)
+        }
+    }
+
+    private renderAxisGrid(parent: GTag, axis: InternalAxis) {
+        const vp = this.viewport
+        const m = this.computeAxisMetrics(axis)
+        const range = axis.computedRange
+        const gridStyle = axis.gridStyle || {}
+        if (axis.ticks && range) {
+            for (const t of axis.ticks) {
+                let tScreen = (t-range.min)/(range.max-range.min) * m.screenSpan
+                if (m.orientation == 'vertical') {
+                    tScreen = m.screenSpan - tScreen
+                }
+                let gridPoints: LineTagAttrs | null = null
+                switch (m.side) {
+                    case 'left':
+                        gridPoints = {x1: m.line.x1, x2: m.line.x1+vp.width, y1: m.line.y1+tScreen, y2: m.line.y1+tScreen}
+                        break
+                    case 'right':
+                        gridPoints = {x1: m.line.x1, x2: m.line.x1-vp.width, y1: m.line.y1+tScreen, y2: m.line.y1+tScreen}
+                        break
+                    case 'top':
+                        gridPoints = {x1: m.line.x1+tScreen, x2: m.line.x1+tScreen, y1: m.line.y1, y2: m.line.y1+vp.height}
+                        break
+                    case 'bottom':
+                        gridPoints = {x1: m.line.x1+tScreen, x2: m.line.x1+tScreen, y1: m.line.y2, y2: m.line.y2-vp.height}
+                        break
+                }
+                if (gridPoints) {
+                    parent.line('.grid', gridPoints, gridStyle)
+                }
+            }
         }
     }
 
