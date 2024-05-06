@@ -1,14 +1,13 @@
 import Arrays from "tuff-core/arrays"
 import { Part, PartTag } from "tuff-core/parts"
 import { PlotPart } from "../src/part"
-import "./style.css"
+import "./demo.css"
 import dayjs from "dayjs"
 
 const baseAxis = {
 	type: 'number' as const,
 	range: 'auto' as const,
-	tickLength: 10,
-	gridStyle: {stroke: '#ffffff44', strokeWidth: 1}
+	tickLength: 10
 }
 
 const lineStyle = {
@@ -32,10 +31,14 @@ export class App extends Part<{}> {
 
 	render(parent: PartTag) {
 		parent.h1({ text: "Tuff Plot" })
-		for (const [key, plot] of Object.entries(this.plots)) {
-			parent.h2({text: key})
-			parent.part(plot)
-		}
+		parent.div('.plots', plotsContainer => {
+			for (const [key, plot] of Object.entries(this.plots)) {
+				plotsContainer.div('.plot', plotContainer => {
+					plotContainer.h2({text: key})
+					plotContainer.part(plot)
+				})
+			}
+		})
 	}
 
 

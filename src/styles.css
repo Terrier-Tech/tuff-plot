@@ -1,0 +1,112 @@
+
+.tuff-plot-container {
+	--tuff-plot-axis-stroke: #000;
+	--tuff-plot-label-fill: #000;
+	--tuff-plot-label-font-size: 12px;
+	--tuff-plot-axis-font-size: 12px;
+	--tuff-plot-axis-font-weight: bold;
+	--tuff-plot-grid-stroke: #f0f0f0;
+	--tuff-plot-grid-stroke-width: 1px;
+	--tuff-plot-preview-size: 24px;
+	--tuff-plot-tool-background: #fff;
+	--tuff-plot-tool-border-radius: 4px;
+	--tuff-plot-tool-pad: 24px;
+	--tuff-plot-hover-background: rgba(128, 128, 128, 0.1);
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	
+	& > svg {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		z-index: 0;
+		& .axis, & .tick {
+			stroke: var(--tuff-plot-axis-stroke);
+		}
+		& .label {
+			fill: var(--tuff-plot-label-fill);
+			font-size: var(--tuff-plot-label-font-size);
+		}
+		& .axis-title {
+			fill: var(--tuff-plot-label-fill);
+			font-size: var(--tuff-plot-axis-font-size);
+			font-weight: var(--tuff-plot-axis-font-weight);
+			alignment-baseline: central;
+			text-anchor: middle;
+			&.left {
+				transform: rotate(-90deg);
+			}
+			&.right {
+				transform: rotate(90deg);
+			}
+		}
+		& .grid {
+			stroke: var(--tuff-plot-grid-stroke);
+			stroke-width: var(--tuff-plot-grid-stroke-width);
+		}
+		& .hover rect {
+			fill: transparent;
+			stroke: none;
+			filter: url(#cursor-filter);
+			&:hover {
+				fill: var(--tuff-plot-hover-background);
+			}
+		}
+	}
+	
+	& .tooltip {
+		position: absolute;
+		top: var(--tuff-plot-tool-pad);
+		border: 1px solid var(--tuff-plot-axis-stroke);
+		background-color: var(--tuff-plot-tool-background);
+		border-radius: var(--tuff-plot-tool-border-radius);
+		z-index: 1;
+		pointer-events: none;
+		transform: translate(-50%, 0);
+		& .label, & .line {
+			color: var(--tuff-plot-label-fill);
+			font-size: var(--tuff-plot-label-font-size);
+			padding: 0.5em;
+			line-height: 1;
+		}
+		& .label {
+			border-bottom: 1px solid var(--tuff-plot-axis-stroke);
+		}
+		& .line {
+			display: flex;
+			gap: 0.75em;
+			align-items: center;
+			& .value {
+				flex: 1 1 auto;
+			}
+			& .preview {
+				flex: 0 0 var(--tuff-plot-preview-size);
+				width: var(--tuff-plot-preview-size);
+				height: 1em;
+				display: flex;
+				align-items: center;
+				position: relative;
+				& .bar {
+					height: 100%;
+					flex: 1 1 auto;
+				}
+				& .stroke {
+					width: 100%;
+				}
+				& svg {
+					position: absolute;
+					top: 50%;
+					left: 50%;
+					transform: translate(-50%, -50%);
+				}
+			}
+		}
+	}
+}
+
+

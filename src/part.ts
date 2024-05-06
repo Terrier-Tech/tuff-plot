@@ -11,6 +11,7 @@ import Messages from "tuff-core/messages"
 import Boxes, {Box} from "tuff-core/boxes"
 import Arrays from "tuff-core/arrays"
 import { Vec } from "tuff-core/vecs"
+import "./styles.css"
 
 const log = new Logger("PlotPart")
 
@@ -498,7 +499,7 @@ export class PlotPart extends Part<PlotState> {
         const tickLength = axis.tickLength || 0
         const range = axis.computedRange
         const labelStyle = axis.labelStyle || this.defaultLabelStyle
-        const gridStyle = axis.gridStyle
+        const gridStyle = axis.gridStyle || {}
         if (tickLength && axis.ticks && range) {
             for (const t of axis.ticks) {
                 let tScreen = (t-range.min)/(range.max-range.min) * screenSpan
@@ -532,7 +533,7 @@ export class PlotPart extends Part<PlotState> {
                         this.renderTickLabel(parent, text, {x: tickPoints.x1!, y: tickPoints.y1!}, side, labelStyle)
                     }
                 }
-                if (gridPoints && gridStyle) {
+                if (gridPoints) {
                     parent.line('.grid', gridPoints, gridStyle)
                 }
             }
