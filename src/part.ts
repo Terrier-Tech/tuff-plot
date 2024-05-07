@@ -123,15 +123,6 @@ export class PlotPart extends Part<PlotState> {
                     }
                 })
 
-                // axes
-                svg.g('.axes', axes => {
-                    for (const axis of this.axes) {
-                        axes.g('.axis', axisGroup => {
-                            this.renderAxis(axisGroup, axis)
-                        }).class(axis.side || 'unknown')
-                    }
-                })
-
                 // traces
                 const numTraces = this.traces.length
                 this.traces.forEach((trace, index) => {
@@ -151,6 +142,15 @@ export class PlotPart extends Part<PlotState> {
                 })
                 svg.g('.hover', hoverContainer => {
                     this.renderHoverRects(hoverContainer)
+                })
+
+                // axes last so that the bars don't cover them
+                svg.g('.axes', axes => {
+                    for (const axis of this.axes) {
+                        axes.g('.axis', axisGroup => {
+                            this.renderAxis(axisGroup, axis)
+                        }).class(axis.side || 'unknown')
+                    }
                 })
             })
         })

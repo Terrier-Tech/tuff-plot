@@ -9,7 +9,12 @@ This is a [Tuff](https://github.com/Terrier-Tech/tuff) plugin for creating plots
 
 ## Usage
 
-COMING SOON
+### Value Formatting
+
+Each `PlotAxis` has a `tickFormat` string field that is used to format values for the ticks as well as tooltips. The string should be either:
+
+* A [dayjs format string](https://day.js.org/docs/en/display/format) for dates
+* A [numeral format string](http://numeraljs.com/#format) for numbers
 
 
 ## Development

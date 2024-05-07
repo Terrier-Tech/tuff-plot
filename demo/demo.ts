@@ -62,7 +62,11 @@ export class App extends Part<{}> {
 		this.plots['simple'] = this.makePart(PlotPart, {
 			layout: {
 				axes: {
-					left: {...baseAxis, title: 'X'},
+					left: {
+						...baseAxis, 
+						title: 'X',
+						tickFormat: '0.[00]'
+					},
 					bottom: {...baseAxis, title: 'Y'}
 				}
 			},
@@ -147,8 +151,8 @@ export class App extends Part<{}> {
 		let foo = 0
 		let bar = 0
 		const dateData = Arrays.range(0, 60).map(i => {
-			foo += (Math.random() - 0.5)
-			bar += (Math.random() - 0.5)
+			foo += (Math.random() - 0.5) * 100
+			bar += (Math.random() - 0.5) * 100
 			return {
 				date: dayjs().add(i, 'days').format(),
 				foo: foo,
@@ -163,7 +167,10 @@ export class App extends Part<{}> {
 		this.plots['dates'] = this.makePart(PlotPart, {
 			layout: {
 				axes: {
-					left: {...baseAxis, title: 'Value'},
+					left: {...baseAxis, 
+						title: 'Value',
+						tickFormat: '0.[0]'
+					},
 					bottom: {
 						...baseAxis,
 						type: 'time',
