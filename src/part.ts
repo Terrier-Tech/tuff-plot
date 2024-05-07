@@ -268,10 +268,7 @@ export class PlotPart extends Part<PlotState> {
                 if (axis.type == 'number') {
                     Axis.roundRange(axis)
                 }
-                const tickMode = axis.tickMode || 'auto'
-                if (tickMode == 'auto') {
-                    Axis.computeTicks(axis)
-                }
+                Axis.computeTicks(axis)
             }
         }
 
@@ -353,8 +350,8 @@ export class PlotPart extends Part<PlotState> {
             const y = yVals[i]!
             const pScreen = Mats.transform(trace.transform!, {x, y})
             const xQuant = Trace.quantizeValue(pScreen.x)
-            const xString = Axis.valueTitle(xAxis, x, xAxis.tickFormat) || ''
-            const yString = Axis.valueTitle(yAxis, y, yAxis.tickFormat) || ''
+            const xString = Axis.valueTitle(xAxis, x, xAxis.hoverFormat || xAxis.tickFormat) || ''
+            const yString = Axis.valueTitle(yAxis, y, yAxis.hoverFormat || yAxis.tickFormat) || ''
             hoverPoints[xQuant] ||= []
             hoverPoints[xQuant].push({
                 trace,

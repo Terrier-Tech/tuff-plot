@@ -64,10 +64,13 @@ export class App extends Part<{}> {
 				axes: {
 					left: {
 						...baseAxis, 
-						title: 'X',
+						title: 'Y',
 						tickFormat: '0.[00]'
 					},
-					bottom: {...baseAxis, title: 'Y'}
+					bottom: {
+						...baseAxis, 
+						title: 'X'
+					}
 				}
 			},
 			traces: [
@@ -115,7 +118,7 @@ export class App extends Part<{}> {
 					left: {
 						...baseAxis,
 						title: 'Value',
-						tickFormat: '($0a)'
+						tickFormat: '($0.[0]a)'
 					},
 					bottom: {
 						...baseAxis,
@@ -150,11 +153,12 @@ export class App extends Part<{}> {
 		// random walk time-based data
 		let foo = 0
 		let bar = 0
-		const dateData = Arrays.range(0, 60).map(i => {
+		const startDate = dayjs().subtract(1, 'year')
+		const dateData = Arrays.range(0, 52).map(i => {
 			foo += (Math.random() - 0.5) * 100
 			bar += (Math.random() - 0.5) * 100
 			return {
-				date: dayjs().add(i, 'days').format(),
+				date: startDate.add(i, 'weeks').format(),
 				foo: foo,
 				bar: bar
 			}
@@ -175,7 +179,9 @@ export class App extends Part<{}> {
 						...baseAxis,
 						type: 'time',
 						title: 'Date',
-						tickFormat: 'MM/DD/YY'
+						tickMode: 'months',
+						tickFormat: 'MMM',
+						hoverFormat: 'MM/DD/YY'
 					}
 				}
 			},

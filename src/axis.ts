@@ -138,11 +138,15 @@ function roundRange(axis: PlotAxis): boolean {
 /**
  * Populates `axis.ticks` automatically based on the axis range.
  * @param axis
- * @return true if it actually computed the ticks, false if there's no range to use
+ * @return true if there are ticks, false if the range is invalid
  */
 function computeTicks(axis: PlotAxis): boolean {
     if (!axis.computedRange) {
         // no range to use
+        return false
+    }
+    if (axis.computedRange.max < axis.computedRange.min) {
+        // range is inverted
         return false
     }
 
@@ -153,11 +157,37 @@ function computeTicks(axis: PlotAxis): boolean {
         return true
     }
 
+    // don't compute manual
+    const tickMode = axis.tickMode || 'auto'
+    if (tickMode == 'manual') {
+        return true
+    }
+
+    // months
+    if (tickMode == 'months') {
+        if (axis.type != 'time') {
+            throw `tickMode=months can only be used with type=time, not ${axis.type}`
+        }
+        let d = dayjs(axis.computedRange.min).startOf('month')
+        if (d.valueOf() < axis.computedRange.min) {
+            // ensure that there's not a tick off the beginning of the axis
+            d = d.add(1, 'month')
+        }
+        const months: number[] = []
+        while (d.valueOf() < axis.computedRange.max) {
+            months.push(d.valueOf())
+            d = d.add(1, 'month')
+        }
+        axis.ticks = months
+        log.info(`Computed month ticks for ${axis.computedRange.min} to ${axis.computedRange.max}`, months)
+        return true
+    }
+
     // number or time
     const step = rangeStep(axis.computedRange, axis.type)
-    log.info(`Step for ${axis.computedRange.min} to ${axis.computedRange.max} is ${step}`)
+    const numSteps = (axis.computedRange.max - axis.computedRange.min) / step
     axis.ticks = Arrays.range(axis.computedRange.min, axis.computedRange.max, step)
-    log.info('Computed number ticks', axis)
+    log.info(`Step for ${axis.computedRange.min} to ${axis.computedRange.max} is ${step} (${numSteps} steps)`, axis)
     return true
 }
 
@@ -194,9 +224,10 @@ export type AxisType = 'number' | 'group' | 'time'
 export type PlotAxis = {
     type: AxisType
     range: 'auto' | AxisRange
-    tickMode?: 'auto' | 'manual'
+    tickMode?: 'auto' | 'manual' | 'months'
     tickFormat?: string
     ticks?: number[]
+    hoverFormat?: string
     groups?: string[]
     computedRange?: AxisRange
     style?: AxisStyle
