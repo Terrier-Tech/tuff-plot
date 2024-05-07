@@ -1,6 +1,6 @@
 {
   "name": "tuff-plot",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
   "files": [
     "*"
@@ -11,7 +11,7 @@
     "check": "tsc",
     "test": "vitest",
     "preview": "vite preview",
-    "prepub": "tsc && mkdir -p dist && rm -rf dist/* && cp -a ./src/*.ts ./dist/ && cp ./package.json ./dist/ && cp ./README.md ./dist/",
+    "prepub": "tsc && mkdir -p dist && rm -rf dist/* && cp -a ./src/*.ts ./dist/ && cp -a ./src/*.css ./dist/ && cp ./package.json ./dist/ && cp ./README.md ./dist/",
     "pub": "npm publish ./dist"
   },
   "devDependencies": {
