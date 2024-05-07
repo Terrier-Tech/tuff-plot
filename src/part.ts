@@ -111,6 +111,9 @@ export class PlotPart extends Part<PlotState> {
             container.svg('.tuff-plot', svg => {
                 svg.attrs({viewBox: {...this.outerSize, x: 0, y: 0}})
 
+                // viewport background
+                svg.rect('.viewport', {...this.viewport})
+
                 // grid gets rendered first so that the axes are on top
                 svg.g('.grids', axes => {
                     for (const axis of this.axes) {
@@ -479,6 +482,11 @@ export class PlotPart extends Part<PlotState> {
         }
     }
 
+    /**
+     * Compute axis rendering metrics.
+     * @param axis 
+     * @returns the measurements necessary to render both the axis and its grid
+     */
     private computeAxisMetrics(axis: InternalAxis) {
         const vp = this.viewport
         const side = axis.side || 'bottom'
@@ -707,7 +715,7 @@ export class PlotPart extends Part<PlotState> {
                     Trace.renderPreview(preview, trace)
                 })
                 const title = trace.title || trace.y.toString()
-                line.div('.title').text(title + ':')
+                line.div('.title').text(title)
                 line.div('.value').text(point.y)
             })
         }

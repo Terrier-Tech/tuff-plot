@@ -1,5 +1,6 @@
 
 .tuff-plot-container {
+	--tuff-plot-viewport-fill: #fff;
 	--tuff-plot-axis-stroke: #000;
 	--tuff-plot-label-fill: #000;
 	--tuff-plot-label-font-size: 12px;
@@ -25,6 +26,9 @@
 		right: 0;
 		bottom: 0;
 		z-index: 0;
+		& .viewport {
+			fill: var(--tuff-plot-viewport-fill);
+		}
 		& .axis-line, & .tick {
 			stroke: var(--tuff-plot-axis-stroke);
 		}
