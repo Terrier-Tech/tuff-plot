@@ -7,7 +7,7 @@ import dayjs from "dayjs"
 const baseAxis = {
 	type: 'number' as const,
 	range: 'auto' as const,
-	tickLength: 10
+	tickLength: 6
 }
 
 const lineStyle = {
@@ -22,9 +22,9 @@ export class App extends Part<{}> {
 
 		this.makeSimple()
 
-		this.makeBar()
-
 		this.makeDates()
+
+		this.makeBar()
 
 		this.dirty()
 	}
@@ -105,14 +105,15 @@ export class App extends Part<{}> {
 		const barData = [
 			{name: 'foo', branch1: 3000, branch2: 2000},
 			{name: 'bar', branch1: 1200, branch2: 4500},
-			{name: 'baz', branch1: 5800, branch2: 3200},
+			{name: 'baz', branch1: 5300, branch2: 3200},
 			{name: 'fab', branch1: 2400, branch2: 1300}
 		]
 
 		const barStyle = {
 			strokeWidth: 2
 		} as const
-		this.plots['bar'] = this.makePart(PlotPart, {
+
+		this.plots['grouped bar'] = this.makePart(PlotPart, {
 			layout: {
 				axes: {
 					left: {
@@ -124,6 +125,41 @@ export class App extends Part<{}> {
 						...baseAxis,
 						type: 'group',
 						title: 'Group'
+					}
+				}
+			},
+			traces: [
+				{
+					data: barData,
+					type: 'bar',
+					x: 'name',
+					y: 'branch1',
+					title: "Branch 1",
+					style: barStyle
+				},
+				{
+					data: barData,
+					type: 'bar',
+					x: 'name',
+					y: 'branch2',
+					title: "Branch 2",
+					style: barStyle
+				}
+			]
+		})
+
+		this.plots['stacked bar'] = this.makePart(PlotPart, {
+			layout: {
+				axes: {
+					left: {
+						...baseAxis,
+						title: 'Value',
+						tickFormat: '($0.[0]a)'
+					},
+					bottom: {
+						...baseAxis,
+						type: 'stack',
+						title: 'Stack'
 					}
 				}
 			},

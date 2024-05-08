@@ -6,6 +6,12 @@ import dayjs from "dayjs"
 import { PartTag } from "tuff-core/parts"
 import { Logger } from "tuff-core/logging"
 
+export type InternalTrace<T extends {}> = PlotTrace<T> & {
+    transform?: Mat
+    _xAxis?: PlotAxis
+    _yAxis?: PlotAxis
+}
+
 const log = new Logger("Trace")
 
 export type XAxisName = 'top' | 'bottom'
@@ -63,7 +69,7 @@ function quantizeValue(num: number): string {
  * @param axis an optional axis that is used for computing numeric values (if it's grouped)
  */
 function getNumberValues<T extends {}>(trace: PlotTrace<T>, col: keyof T, axis?: PlotAxis): Array<number | undefined> {
-    if (axis && axis.type == 'group') {
+    if (axis && (axis.type == 'group' || axis.type == 'stack')) {
         const groups = axis.groups || getStringValues(trace, col)
         const groupMap: Record<string,number> = {} // map value to index
         groups.forEach((val, index) => {
@@ -98,6 +104,29 @@ function getNumberValues<T extends {}>(trace: PlotTrace<T>, col: keyof T, axis?:
             return undefined
         }
     })
+}
+
+/**
+ * Computes the max valueCol value for each groupCol value
+ * @param trace 
+ * @param valueCol the column that maps to the values
+ * @param groupCol the column by which to group the data
+ */
+function getGroupMaxes<T extends {}>(trace: PlotTrace<T>, valueCol: keyof T, groupCol: keyof T): Record<string, number> {
+    const maxes: Record<string, number> = {}
+    trace.data.forEach(row => {
+        const k = row[groupCol]
+        const v = row[valueCol]
+        if (k) {
+            const ks = k.toString()
+            maxes[ks] ||= 0
+            const vn = parseFloat(v?.toString() || '0')
+            if (!isNaN(vn)) {
+                maxes[ks] += vn
+            }
+        }
+    })
+    return maxes
 }
 
 /**
@@ -221,6 +250,7 @@ const Trace = {
     quantizeValue,
     getNumberValues,
     getStringValues,
+    getGroupMaxes,
     segmentValues,
     pointsString,
     renderMarker,

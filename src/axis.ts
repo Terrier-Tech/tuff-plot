@@ -1,6 +1,6 @@
 import { Logger } from "tuff-core/logging"
 import { SvgBaseAttrs } from "tuff-core/svg"
-import Trace, { PlotTrace } from "./trace"
+import Trace, { InternalTrace, PlotTrace } from "./trace"
 import dayjs from 'dayjs'
 import numeral from "numeral"
 import Arrays from "tuff-core/arrays"
@@ -46,6 +46,7 @@ function numberRangeStep(min: number, max: number, scale: number = 1): number {
 function rangeStep(range: AxisRange, type: AxisType): number {
     switch (type) {
         case 'group':
+        case 'stack':
             return 1
         case 'time':
             const dMin = dayjs(range.min)
@@ -73,15 +74,19 @@ function rangeStep(range: AxisRange, type: AxisType): number {
  * @param axis the axis to update
  * @param trace a trace providing data
  * @param col the trace column from which to pull the values
+ * @param otherAxis the other axis on the plot
+ * @param otherCol the column used in the other axis
  */
-function updateRange<T extends {}>(axis: PlotAxis, trace: PlotTrace<T>, col: keyof T) {
+function updateRange<T extends {}>(axis: PlotAxis, trace: PlotTrace<T>, col: keyof T & string) {
+    log.info(`Axis.updateRange for ${col}`, axis, trace, col)
     if (axis.range != 'auto') {
         // manual range
         axis.computedRange = axis.range
         return
     }
 
-    if (axis.type == 'group') {
+    // bar charts get integers for the virtual range
+    if (axis.type == 'group' || axis.type == 'stack') {
         const stringValues = Trace.getStringValues(trace, col)
         axis.computedRange = {min: -0.5, max: stringValues.length-0.5}
         axis.groups ||= stringValues
@@ -89,12 +94,52 @@ function updateRange<T extends {}>(axis: PlotAxis, trace: PlotTrace<T>, col: key
         return
     }
 
-    const values = Trace.getNumberValues(trace, col, axis)
-    const min = Arrays.min(Arrays.compact(values))
-    const max = Arrays.max(Arrays.compact(values))
+    // regular auto range
+    const values = Arrays.compact(Trace.getNumberValues(trace, col, axis))
+    const min = Arrays.min(values)
+    let max = Arrays.max(values)
     axis.computedRange = extendRange({min, max}, axis.computedRange)
     log.info(`Updating axis range with ${col.toString()} to`, axis.computedRange)
 
+}
+
+/**
+ * Assigns axis ranges for all axes on traces that use a stacked axis
+ * @param axis the stacked axis
+ * @param traces the traces that use the axis
+ * @param valueKey the key for getting data from the traces to compute the range (the opposite of the orientation of the axis)
+ */
+function updateStackedRange<T extends {}>(axis: PlotAxis, traces: InternalTrace<T>[], valueKey: 'x' | 'y') {
+    log.info(`Axis.updateStackedRange for ${valueKey}`, axis, traces, valueKey)
+    const groupKey = valueKey == 'x' ? 'y' : 'x'
+    
+    // compute the max value for each group
+    const maxes: Record<string, number> = {}
+    for (const trace of traces) {
+        trace.data.forEach(row => {
+            const k = row[trace[groupKey]]
+            const v = row[trace[valueKey]]
+            if (k) {
+                const ks = k.toString()
+                maxes[ks] ||= 0
+                const vn = parseFloat(v?.toString() || '0')
+                if (!isNaN(vn)) {
+                    maxes[ks] += vn
+                }
+            }
+        })
+    }
+    log.info(`Computed max values`, maxes)
+
+    const max = Arrays.max(Object.values(maxes)) || 0
+    const otherAxisKey = valueKey == 'x' ? '_xAxis' : '_yAxis'
+    for (const trace of traces) {
+        const otherAxis = trace[otherAxisKey]
+        if (otherAxis) {
+            otherAxis.computedRange = {min: 0, max}
+            log.info(`Updating stacked ${valueKey} axis range`, axis.computedRange, )
+        }
+    }
 }
 
 /**
@@ -151,7 +196,7 @@ function computeTicks(axis: PlotAxis): boolean {
     }
 
     // grouped
-    if (axis.type == 'group') {
+    if (axis.type == 'group' || axis.type == 'stack') {
         axis.ticks = Arrays.range(Math.ceil(axis.computedRange.min), Math.floor(axis.computedRange.max))
         log.info('Computed group ticks', axis)
         return true
@@ -198,7 +243,7 @@ function computeTicks(axis: PlotAxis): boolean {
  * @param format an optional format string (should be dayjs for axis.type=='time' or numeral for axis.type=='number')
  */
 function valueTitle(axis: PlotAxis, value: number, format?: string): string | undefined {
-    if (axis.type == 'group') {
+    if (axis.type == 'group' || axis.type == 'stack') {
         if (axis.groups?.length) {
             return axis.groups[Math.round(value)]
         }
@@ -219,7 +264,7 @@ function valueTitle(axis: PlotAxis, value: number, format?: string): string | un
     }
 }
 
-export type AxisType = 'number' | 'group' | 'time'
+export type AxisType = 'number' | 'group' | 'stack' | 'time'
 
 export type PlotAxis = {
     type: AxisType
@@ -243,6 +288,7 @@ export type PlotAxis = {
 const Axis = {
     roundRange,
     updateRange,
+    updateStackedRange,
     valueTitle,
     computeTicks
 }

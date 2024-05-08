@@ -1,12 +1,12 @@
 import { Logger } from "tuff-core/logging"
 import { Part, PartTag } from "tuff-core/parts"
 import Layout, { PlotLayout, PlotSide } from "./layout"
-import Trace, { defaultColorPalette, PlotTrace } from "./trace"
+import Trace, { defaultColorPalette, InternalTrace, PlotTrace } from "./trace"
 import Axis, { AxisStyle, LabelStyle, PlotAxis } from "./axis"
 import {GTag, LineTagAttrs, PolylineTagAttrs, TextTagAttrs} from "tuff-core/svg"
 import Objects from "tuff-core/objects"
 import Html, { DivTag } from "tuff-core/html"
-import Mats, {Mat} from "tuff-core/mats"
+import Mats from "tuff-core/mats"
 import Messages from "tuff-core/messages"
 import Boxes, {Box} from "tuff-core/boxes"
 import Arrays from "tuff-core/arrays"
@@ -22,12 +22,6 @@ let _idCounter = 0
 
 type Size = {width: number, height: number}
 type Padding = {top: number, right: number, bottom: number, left: number}
-
-type InternalTrace<T extends {}> = PlotTrace<T> & {
-    transform?: Mat
-    _xAxis?: PlotAxis
-    _yAxis?: PlotAxis
-}
 
 type InternalAxis = PlotAxis & {
     side?: PlotSide
@@ -125,15 +119,16 @@ export class PlotPart extends Part<PlotState> {
 
                 // traces
                 const numTraces = this.traces.length
+                const totals: Record<number, number> = {}
                 this.traces.forEach((trace, index) => {
                     svg.g(".trace", traceParent => {
                         const traceType = trace.type || 'scatter'
                         switch (traceType) {
                             case 'scatter':
-                                this.renderScatterTrace(traceParent, trace, index, numTraces)
+                                this.renderScatterTrace(traceParent, trace, index, numTraces, totals)
                                 break
                             case 'bar':
-                                this.renderBarTrace(traceParent, trace, index, numTraces)
+                                this.renderBarTrace(traceParent, trace, index, numTraces, totals)
                                 break
                             default:
                                 log.warn(`Don't know how to render trace type '${traceType}'`)
@@ -246,19 +241,32 @@ export class PlotPart extends Part<PlotState> {
         )
         log.info("Viewport: ", this.viewport)
 
-        // compute the axis ranges
+        // compute regular axis ranges
         for (const trace of this.traces) {
             const xAxis = trace._xAxis!
             const yAxis = trace._yAxis!
-            Axis.updateRange(xAxis, trace, trace.x)
-            Axis.updateRange(yAxis, trace, trace.y)
+            Axis.updateRange(xAxis, trace, trace.x.toString())
+            Axis.updateRange(yAxis, trace, trace.y.toString())
 
             // force grouped axes to zero
-            if (xAxis.type == 'group' && yAxis.range == 'auto') {
+            if ((yAxis.type == 'group' || yAxis.type == 'stack') && yAxis.range == 'auto') {
+                xAxis.computedRange!.min = 0
+            }
+            if ((xAxis.type == 'group' || xAxis.type == 'stack') && xAxis.range == 'auto') {
                 yAxis.computedRange!.min = 0
             }
-            if (yAxis.type == 'group' && xAxis.range == 'auto') {
-                xAxis.computedRange!.min = 0
+        }
+
+        // compute stacked axis ranges
+        for (const axis of this.axes) {
+            if (axis.type == 'stack') {
+                const axisKey = axis.side == 'bottom' || axis.side == 'top' ? '_xAxis' : '_yAxis'
+                const otherColKey = axis.side == 'bottom' || axis.side == 'top' ? 'y' : 'x'
+                const traces = this.traces.filter(t => t[axisKey] == axis)
+                log.info(`Stacked axis ${axis.title} has ${traces.length} associated traces`, axis, traces)
+                if (traces.length) {
+                    Axis.updateStackedRange(axis, traces, otherColKey)
+                }
             }
         }
     
@@ -283,7 +291,6 @@ export class PlotPart extends Part<PlotState> {
         })
 
         // compute the hover rects
-        log.info(`Computed ${Object.values(this.hoverPoints).length} hover points`, this.hoverPoints)
         this.hoverRects = this.computeHoverRects(this.hoverPoints)
         log.info(`Computed ${this.hoverRects.length} hover rects`, this.hoverRects)
 
@@ -394,8 +401,9 @@ export class PlotPart extends Part<PlotState> {
      * @param trace the trace to render
      * @param _index the index of the trace in the render list
      * @param _numTraces the number of traces being rendered 
+     * @param _totals the accumulated total for each input value
      */
-    private renderScatterTrace<T extends {}>(parent: GTag, trace: InternalTrace<T>, _index: number, _numTraces: number) {
+    private renderScatterTrace<T extends {}>(parent: GTag, trace: InternalTrace<T>, _index: number, _numTraces: number, _totals: Record<number, number>) {
         // break the trace into segments and transform them
         const transform = trace.transform || Mats.identity()
         const xAxis = trace._xAxis!
@@ -429,8 +437,9 @@ export class PlotPart extends Part<PlotState> {
      * @param trace the trace to render
      * @param index the index of the trace in the render list
      * @param numTraces the number of traces being rendered 
+     * @param totals the accumulated total for each input value
      */
-    private renderBarTrace<T extends {}>(parent: GTag, trace: InternalTrace<T>, index: number, numTraces: number) {
+    private renderBarTrace<T extends {}>(parent: GTag, trace: InternalTrace<T>, index: number, numTraces: number, totals: Record<number, number>) {
         const style = {...trace.style}
 
         // get the raw points
@@ -454,6 +463,15 @@ export class PlotPart extends Part<PlotState> {
                 boxes.push({x: p.x+dx, y: 0, width: width, height: p.y})
             }
         }
+        else if (xAxis.type == 'stack') {
+            const ratio = xAxis.barRatio || this.defaultAxisSettings.barRatio
+            const width = ratio / numTraces
+            for (const p of points) {
+                const y0 = totals[p.x] || 0
+                boxes.push({x: p.x-width/2, y: y0, width: width, height: p.y})
+                totals[p.x] = y0 + p.y
+            }
+        }
         else if (yAxis.type == 'group') {
             const ratio = yAxis.barRatio || this.defaultAxisSettings.barRatio
             const height = ratio * ratio / numTraces // ratio squared because we want the groups to be separate as well
@@ -462,8 +480,17 @@ export class PlotPart extends Part<PlotState> {
                 boxes.push({x: 0, y: p.y+dy, width: p.x, height: height})
             }
         }
+        else if (yAxis.type == 'stack') {
+            const ratio = yAxis.barRatio || this.defaultAxisSettings.barRatio
+            const width = ratio / numTraces
+            for (const p of points) {
+                const x0 = totals[p.y] || 0
+                boxes.push({x: x0, y: p.y-width/2, width: p.x, height: width})
+                totals[p.y] = x0 + p.x
+            }
+        }
         else {
-            log.warn(`Unable to render a bar trace when neither axis has type=='group'`)
+            log.warn(`Unable to render a bar trace when neither axis has type=='group' or type=='stack'`)
             return
         }
 
