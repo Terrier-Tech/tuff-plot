@@ -1,9 +1,10 @@
 
 .tuff-plot-container {
 	--tuff-plot-viewport-fill: #fff;
-	--tuff-plot-axis-stroke: #000;
-	--tuff-plot-label-fill: #000;
+	--tuff-plot-label-color: #000;
 	--tuff-plot-label-font-size: 12px;
+	--tuff-plot-axis-stroke: #000;
+	--tuff-plot-axis-stroke-width: 1px;
 	--tuff-plot-axis-font-size: 12px;
 	--tuff-plot-axis-font-weight: bold;
 	--tuff-plot-grid-stroke: #f0f0f0;
@@ -31,13 +32,14 @@
 		}
 		& .axis-line, & .tick {
 			stroke: var(--tuff-plot-axis-stroke);
+			stroke-width: var(--tuff-plot-axis-stroke-width);
 		}
 		& .label {
-			fill: var(--tuff-plot-label-fill);
+			fill: var(--tuff-plot-label-color);
 			font-size: var(--tuff-plot-label-font-size);
 		}
 		& .axis-title {
-			fill: var(--tuff-plot-label-fill);
+			fill: var(--tuff-plot-label-color);
 			font-size: var(--tuff-plot-axis-font-size);
 			font-weight: var(--tuff-plot-axis-font-weight);
 			alignment-baseline: central;
@@ -73,9 +75,9 @@
 		pointer-events: none;
 		transform: translate(-50%, 0);
 		& .label, & .line {
-			color: var(--tuff-plot-label-fill);
+			color: var(--tuff-plot-label-color);
 			font-size: var(--tuff-plot-label-font-size);
-			padding: 0.5em;
+			padding: 0.3em 0.5em;
 			line-height: 1;
 		}
 		& .label {
