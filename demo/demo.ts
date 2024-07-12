@@ -85,7 +85,7 @@ export class App extends Part<{}> {
 					x: 'x',
 					y: 'bar',
 					title: "Bar",
-					style: lineStyle
+					style: {...lineStyle, strokeDasharray: '6 6'}
 				},
 				{
 					data: pointData,

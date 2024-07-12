@@ -221,6 +221,12 @@ function renderMarker(parent: GTag, p: Vec, marker: MarkerStyle, style: TraceSty
     }
 }
 
+/**
+ * Renders a simple preview of the trace suitable for the hover tooltip or legend.
+ * @param parent 
+ * @param trace 
+ * @returns 
+ */
 function renderPreview(parent: PartTag, trace: PlotTrace<any>) {
     const style = trace.style || {}
     switch (trace.type) {
@@ -228,21 +234,22 @@ function renderPreview(parent: PartTag, trace: PlotTrace<any>) {
             parent.div('.bar').css({backgroundColor: style.fill})
             return
         case 'scatter':
-            if (style.stroke) {
-                parent.div('.stroke').css({backgroundColor: style.stroke, height: `${style.strokeWidth}px`})
-            }
-            if (trace.marker) {
-                parent.svg('.marker', svg => {
-                    const size = trace.marker?.size || 10
-                    svg.attrs({viewBox: {width: size*2, height: size*2, x: 0, y: 0}})
-                    svg.attrs({width: size*2, height: size*2})
+            parent.svg('.marker', svg => {
+                const width = 24
+                const size = trace.marker?.size || 10
+                const height = size * 2
+                svg.attrs({viewBox: {width, height, x: 0, y: 0}})
+                svg.attrs({width, height})
+                if (style.stroke) {
+                    svg.line({x1: 0, y1: height/2, x2: width, y2: height/2}, style)
+                }
+                if (trace.marker) {
                     svg.g(g => {
-                        renderMarker(g, {x: size, y: size}, trace.marker!, style)
+                        renderMarker(g, {x: width/2, y: height/2}, trace.marker!, style)
                     })
-                })
-            }
+                }
+            })
             return
-
     }
 }
 
