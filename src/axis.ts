@@ -1,6 +1,6 @@
 import { Logger } from "tuff-core/logging"
 import { SvgBaseAttrs } from "tuff-core/svg"
-import Trace, { InternalTrace, PlotTrace } from "./trace"
+import { InternalTrace, PlotTrace } from "./trace"
 import dayjs from 'dayjs'
 import numeral from "numeral"
 import Arrays from "tuff-core/arrays"
