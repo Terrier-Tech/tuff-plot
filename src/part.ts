@@ -2,11 +2,11 @@ import { Logger } from "tuff-core/logging"
 import { Part, PartTag } from "tuff-core/parts"
 import Layout, { PlotLayout, PlotSide } from "./layout"
 import Trace, { defaultColorPalette, InternalTrace, PlotTrace } from "./trace"
-import Axis, { AxisStyle, LabelStyle, PlotAxis } from "./axis"
+import Axis, { AxisRange, AxisStyle, LabelStyle, PlotAxis } from "./axis"
 import {GTag, LineTagAttrs, PolylineTagAttrs, TextTagAttrs} from "tuff-core/svg"
 import Objects from "tuff-core/objects"
 import Html, { DivTag } from "tuff-core/html"
-import Mats from "tuff-core/mats"
+import Mats, { Mat } from "tuff-core/mats"
 import Messages from "tuff-core/messages"
 import Boxes, {Box} from "tuff-core/boxes"
 import Arrays from "tuff-core/arrays"
@@ -285,7 +285,9 @@ export class PlotPart extends Part<PlotState> {
         this.traces.forEach((trace, index) => {
             const xAxis = axes[trace.xAxis || 'bottom']!
             const yAxis = axes[trace.yAxis || 'left']!
-            this.computeTraceTransform(trace, xAxis, yAxis)
+            const xRange = xAxis.computedRange || {min: 0, max: 1}
+            const yRange = yAxis.computedRange || {min: 0, max: 1}
+            trace.transform = this.computeAxisTransform(xRange, yRange)
             this.applyTraceStyleDefaults(trace, index)
             this.accumulateHoverPoints(trace, xAxis, yAxis, this.hoverPoints)
         })
@@ -303,19 +305,15 @@ export class PlotPart extends Part<PlotState> {
 	}
 
     /**
-     * Computes the transform to convert coordinates in the given trace's space to screen space.
-     * @param trace 
+     * Computes the transform to convert coordinates in the given axis space to screen space.
      * @param xAxis 
      * @param yAxis 
      */
-    private computeTraceTransform(trace: InternalTrace<any>, xAxis: PlotAxis, yAxis: PlotAxis) {
-        log.info(`Computing ${trace.id} transform`, trace, xAxis, yAxis)
-        const xRange = xAxis.computedRange || {min: 0, max: 1}
-        const yRange = yAxis.computedRange || {min: 0, max: 1}
+    private computeAxisTransform(xRange: AxisRange, yRange: AxisRange): Mat {
+        log.info(`Computing axis transform`, xRange, yRange)
         // flip the y range because the SVG coordinate space is upside down
         const dataBox = Boxes.make(xRange.min, yRange.max, xRange.max - xRange.min, yRange.min - yRange.max)
-        let transform = Mats.fromBoxes(dataBox, this.viewport)
-        trace.transform = transform
+        return Mats.fromBoxes(dataBox, this.viewport)
     }
 
     /**
@@ -350,8 +348,8 @@ export class PlotPart extends Part<PlotState> {
      * @param hoverPoints an existing map of hover points
      */
     private accumulateHoverPoints(trace: InternalTrace<any>, xAxis: PlotAxis, yAxis: PlotAxis, hoverPoints: Record<string, HoverPoint[]>) {
-        const xVals = Trace.getNumberValues(trace, trace.x, xAxis)
-        const yVals = Trace.getNumberValues(trace, trace.y, yAxis)
+        const xVals = Axis.computeNumberValues(xAxis, trace.data, trace.x)
+        const yVals = Axis.computeNumberValues(yAxis, trace.data, trace.y)
         for (let i=0; i<xVals.length; i++) {
             const x = xVals[i]!
             const y = yVals[i]!
@@ -445,8 +443,8 @@ export class PlotPart extends Part<PlotState> {
         // get the raw points
         const xAxis = trace._xAxis!
         const yAxis = trace._yAxis!
-        const xValues = Trace.getNumberValues(trace, trace.x, xAxis)
-        const yValues = Trace.getNumberValues(trace, trace.y, yAxis)
+        const xValues = Axis.computeNumberValues(xAxis, trace.data, trace.x)
+        const yValues = Axis.computeNumberValues(yAxis, trace.data, trace.y)
         const points = Arrays.range(0, xValues.length).map(i => {
             const x = xValues[i] || 0
             const y = yValues[i] || 0
@@ -586,6 +584,39 @@ export class PlotPart extends Part<PlotState> {
                     }
                 }
             }
+        }
+
+        // annotations
+        if (axis.annotations?.length) {
+            let transform = Mats.identity() 
+            if (m.orientation == 'vertical') {
+                transform = this.computeAxisTransform({min: 0, max: 1}, axis.computedRange!)
+            }
+            else {// horizontal
+                transform = this.computeAxisTransform(axis.computedRange!, {min: 0, max: 1})
+            }
+            parent.g('.annotations', group => {
+                const anns = axis.annotations || []
+                const values = Axis.computeNumberValues(axis, anns, 'value')
+                anns.forEach((ann, index) => {
+                    let annPoints: LineTagAttrs = m.line
+                    if (m.orientation == 'vertical') {
+                        const p = Mats.transform(transform, {x: 0, y: values[index]!})
+                        annPoints = {
+                            x1: vp.x, x2: vp.x + vp.width,
+                            y1: p.y, y2: p.y
+                        }
+                    }
+                    else { // horizontal
+                        const p = Mats.transform(transform, {y: 0, x: values[index]!})
+                        annPoints = {
+                            x1: p.x, x2: p.x,
+                            y1: vp.y, y2: vp.y + vp.height
+                        }
+                    }
+                    group.line(annPoints, ann.style)
+                })
+            })
         }
 
         // render the actual line

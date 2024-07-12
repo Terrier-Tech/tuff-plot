@@ -200,6 +200,13 @@ export class App extends Part<{}> {
 			}
 		})
 
+		// compute the beginning of the year for an annotation
+		const newYears = dayjs().startOf('year')
+		const annStyle = {
+			stroke: '#aaa', 
+			strokeWidth: 1
+		}
+
 		const dateStyle = {
 			strokeWidth: 2
 		} as const
@@ -209,7 +216,11 @@ export class App extends Part<{}> {
 				axes: {
 					left: {...baseAxis, 
 						title: 'Value',
-						tickFormat: '0.[0]'
+						tickFormat: '0.[0]',
+						annotations: [{
+							value: 0,
+							style: annStyle
+						}]
 					},
 					bottom: {
 						...baseAxis,
@@ -217,7 +228,11 @@ export class App extends Part<{}> {
 						title: 'Date',
 						tickMode: 'months',
 						tickFormat: 'MMM',
-						hoverFormat: 'MM/DD/YY'
+						hoverFormat: 'MM/DD/YY',
+						annotations: [{
+							value: newYears.format('YYYY-MM-DD'),
+							style: annStyle
+						}]
 					}
 				}
 			},

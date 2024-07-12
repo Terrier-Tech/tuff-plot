@@ -69,6 +69,72 @@ function rangeStep(range: AxisRange, type: AxisType): number {
     }
 }
 
+
+
+/**
+ * Get all unique values for the given column as strings.
+ * @param data
+    * @param col a column key in the trace data
+ */
+function computeStringValues<T extends {}>(axis: PlotAxis, data: T[], col: keyof T): Array<string> {
+    if (axis.groups) {
+        return axis.groups
+    }
+    const values: Record<string, boolean> = {}
+    data.forEach(row => {
+        const val = row[col]
+        if (val) {
+            values[val.toString()] = true
+        }
+    })
+    return Object.keys(values)
+}
+
+
+/**
+* Get all of the values for the given column as numbers.
+* @param axis the axis that is used for computing numeric values (if it's grouped)
+* @param data
+* @param col a column key in the trace data
+*/
+function computeNumberValues<T extends {}>(axis: PlotAxis, data: T[], col: keyof T): Array<number | undefined> {
+   if (axis && (axis.type == 'group' || axis.type == 'stack')) {
+       const groups = computeStringValues(axis, data, col)
+       const groupMap: Record<string,number> = {} // map value to index
+       groups.forEach((val, index) => {
+           if (val) {
+               groupMap[val] = index
+           }
+       })
+       return data.map(row => {
+           const val = row[col]
+           if (val) {
+               return groupMap[val.toString()]
+           } else {
+               return undefined
+           }
+       })
+   }
+
+   return data.map(row => {
+       const val = row[col]
+       if (typeof val == 'number') {
+           return val
+       }
+       else if (typeof val == 'string') {
+           if (axis && axis.type == 'time') {
+               return dayjs(val).valueOf()
+           }
+           else {
+               return parseFloat(val.toString())
+           }
+       }
+       else {
+           return undefined
+       }
+   })
+}
+
 /**
  * Updates the range of an axis to fit data from the given trace column.
  * @param axis the axis to update
@@ -87,7 +153,7 @@ function updateRange<T extends {}>(axis: PlotAxis, trace: PlotTrace<T>, col: key
 
     // bar charts get integers for the virtual range
     if (axis.type == 'group' || axis.type == 'stack') {
-        const stringValues = Trace.getStringValues(trace, col)
+        const stringValues = computeStringValues(axis, trace.data, col)
         axis.computedRange = {min: -0.5, max: stringValues.length-0.5}
         axis.groups ||= stringValues
         log.info(`${col.toString()} axis groups`, axis.groups)
@@ -95,7 +161,7 @@ function updateRange<T extends {}>(axis: PlotAxis, trace: PlotTrace<T>, col: key
     }
 
     // regular auto range
-    const values = Arrays.compact(Trace.getNumberValues(trace, col, axis))
+    const values = Arrays.compact(computeNumberValues(axis, trace.data, col))
     const min = Arrays.min(values)
     let max = Arrays.max(values)
     axis.computedRange = extendRange({min, max}, axis.computedRange)
@@ -266,6 +332,15 @@ function valueTitle(axis: PlotAxis, value: number, format?: string): string | un
 
 export type AxisType = 'number' | 'group' | 'stack' | 'time'
 
+/**
+ * Highlights a specific value on the axis, making a styled line and maybe a tooltip in the future.
+ */
+export type AxisAnnotation = {
+    value: number | string
+    style: AxisStyle
+    title?: string
+}
+
 export type PlotAxis = {
     type: AxisType
     range: 'auto' | AxisRange
@@ -282,6 +357,7 @@ export type PlotAxis = {
     title?: string
     titleStyle?: LabelStyle
     gridStyle?: AxisStyle
+    annotations?: AxisAnnotation[]
 }
 
 
@@ -290,7 +366,9 @@ const Axis = {
     updateRange,
     updateStackedRange,
     valueTitle,
-    computeTicks
+    computeTicks,
+    computeStringValues,
+    computeNumberValues
 }
 
 export default Axis

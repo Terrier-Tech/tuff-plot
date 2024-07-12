@@ -1,8 +1,7 @@
 import Mats, {Mat} from "tuff-core/mats"
 import {GTag, SvgBaseAttrs} from "tuff-core/svg"
 import { Vec } from "tuff-core/vecs"
-import {PlotAxis} from "./axis"
-import dayjs from "dayjs"
+import Axis, {PlotAxis} from "./axis"
 import { PartTag } from "tuff-core/parts"
 import { Logger } from "tuff-core/logging"
 
@@ -62,49 +61,6 @@ function quantizeValue(num: number): string {
 }
 
 
-/**
- * Get all of the values for the given column as numbers.
- * @param trace
- * @param col a column key in the trace data
- * @param axis an optional axis that is used for computing numeric values (if it's grouped)
- */
-function getNumberValues<T extends {}>(trace: PlotTrace<T>, col: keyof T, axis?: PlotAxis): Array<number | undefined> {
-    if (axis && (axis.type == 'group' || axis.type == 'stack')) {
-        const groups = axis.groups || getStringValues(trace, col)
-        const groupMap: Record<string,number> = {} // map value to index
-        groups.forEach((val, index) => {
-            if (val) {
-                groupMap[val] = index
-            }
-        })
-        return trace.data.map(row => {
-            const val = row[col]
-            if (val) {
-                return groupMap[val.toString()]
-            } else {
-                return undefined
-            }
-        })
-    }
-
-    return trace.data.map(row => {
-        const val = row[col]
-        if (typeof val == 'number') {
-            return val
-        }
-        else if (typeof val == 'string') {
-            if (axis && axis.type == 'time') {
-                return dayjs(val).valueOf()
-            }
-            else {
-                return parseFloat(val.toString())
-            }
-        }
-        else {
-            return undefined
-        }
-    })
-}
 
 /**
  * Computes the max valueCol value for each groupCol value
@@ -129,22 +85,6 @@ function getGroupMaxes<T extends {}>(trace: PlotTrace<T>, valueCol: keyof T, gro
     return maxes
 }
 
-/**
- * Get all unique values for the given column as strings.
- * @param trace
- * @param col a column key in the trace data
- */
-function getStringValues<T extends {}>(trace: PlotTrace<T>, col: keyof T): Array<string> {
-    const values: Record<string, boolean> = {}
-    trace.data.forEach(row => {
-        const val = row[col]
-        if (val) {
-            values[val.toString()] = true
-        }
-    })
-    return Object.keys(values)
-}
-
 
 /**
  * Breaks trace values into contiguous segments separated by null values.
@@ -152,8 +92,8 @@ function getStringValues<T extends {}>(trace: PlotTrace<T>, col: keyof T): Array
  * @param transform a transform to apply to the segmented values
  */
 function segmentValues<T extends {}>(trace: PlotTrace<T>, transform: Mat, xAxis: PlotAxis, yAxis: PlotAxis): Array<Vec[]> {
-    const xValues = getNumberValues(trace, trace.x, xAxis)
-    const yValues = getNumberValues(trace, trace.y, yAxis)
+    const xValues = Axis.computeNumberValues(xAxis, trace.data, trace.x)
+    const yValues = Axis.computeNumberValues(yAxis, trace.data, trace.y)
     let segment: Vec[] = []
     let segments: Array<Vec[]> = []
     xValues.forEach((x, index) => {
@@ -255,8 +195,6 @@ function renderPreview(parent: PartTag, trace: PlotTrace<any>) {
 
 const Trace = {
     quantizeValue,
-    getNumberValues,
-    getStringValues,
     getGroupMaxes,
     segmentValues,
     pointsString,
