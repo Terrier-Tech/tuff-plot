@@ -80,6 +80,8 @@ export class PlotPart extends Part<PlotState> {
         barRatio: 0.75
     }
 
+    private _awaitingLayout = false
+
     async init() {
         this.traces = this.state.traces
 
@@ -97,7 +99,9 @@ export class PlotPart extends Part<PlotState> {
     }
     
     render(parent: PartTag) {
-		if (this.outerSize.width == 0) {
+        if (this.outerSize.width == 0) {
+            log.info(`Skipping initial render to force a layout`, this)
+            this._awaitingLayout = true
             return
         }
         parent.div('.tuff-plot-container', container => {
@@ -160,10 +164,19 @@ export class PlotPart extends Part<PlotState> {
     }
     
 	update(_elem: HTMLElement) {
-		if (this.viewport.width == 0) {
+		if (this.viewport.width == 0 || this._awaitingLayout) {
 			this.computeLayout(_elem)
 		}
-	}
+    }
+    
+    /**
+     * Recomputes the layout of the plot based on the current state.
+     */
+    relayout() {
+        log.info("Relayout", this)
+        this._awaitingLayout = true
+        this.dirty()
+    }
 
     outerSize: Size = {width: 0, height: 0}
     padding: Padding = {top: 0, left: 0, right: 0, bottom: 0}
@@ -173,7 +186,8 @@ export class PlotPart extends Part<PlotState> {
         return this.state.layout.pad || Layout.Defaults.pad
     }
 
-	private computeLayout(elem: HTMLElement) {
+    private computeLayout(elem: HTMLElement) {
+        this._awaitingLayout = false
         const pad = this.computePad()
         this.traces = this.state.traces
 

@@ -3,6 +3,8 @@ import { Part, PartTag } from "tuff-core/parts"
 import { PlotPart } from "../src/part"
 import "./demo.css"
 import dayjs from "dayjs"
+import { PlotTrace } from "../src/trace"
+import { PlotLayout } from "../src/layout"
 
 const baseAxis = {
 	type: 'number' as const,
@@ -14,9 +16,22 @@ const lineStyle = {
 	strokeWidth: 2
 } as const
 
+/**
+ * A cheap way to generate predictable pseudo-random numbers
+ * @param seed 
+ * @returns 
+ */
+function seededRandom(seed: number) {
+    var x = Math.sin(seed++) * 10000
+    return x - Math.floor(x)
+}
+
 export class App extends Part<{}> {
 
-	plots: Record<string,PlotPart> = {}
+	plots: Record<string, PlotPart> = {}
+	updateInterval: ReturnType<typeof setInterval> | null = null
+
+	intervalOffset = 0
 
 	async init() {
 
@@ -27,6 +42,13 @@ export class App extends Part<{}> {
 		this.makeBar()
 
 		this.dirty()
+
+		// uncomment to see the plots update in real time
+		// this.updateInterval = setInterval(() => {
+		// 	this.intervalOffset += 1
+		// 	this.makeSimple()
+		// 	this.makeDates()
+		// }, 1000)
 	}
 
 	render(parent: PartTag) {
@@ -45,60 +67,69 @@ export class App extends Part<{}> {
 	makeSimple() {
 
 		const lineData = Arrays.range(0, 100).map(i => {
+			const x = (i + this.intervalOffset) / 20
 			return {
-				x: i / 20,
-				foo: Math.sin(i / 20) * 1.5,
-				bar: Math.cos(i / 15)
+				x,
+				foo: Math.sin(x) * 1.5,
+				bar: Math.cos(x * 1.5)
 			}
 		})
 
 		const pointData = Arrays.range(0, 100, 5).map(i => {
+			const x = (i + this.intervalOffset) / 20
 			return {
-				x: i / 20,
-				baz: Math.cos(i / 12 - 2) * 1.25
+				x,
+				baz: Math.cos(x*0.75) * 1.25
 			}
 		})
 
-		this.plots['simple'] = this.makePart(PlotPart, {
-			layout: {
-				axes: {
-					left: {
-						...baseAxis, 
-						title: 'Y',
-						tickFormat: '0.[00]'
-					},
-					bottom: {
-						...baseAxis, 
-						title: 'X'
-					}
+		const layout: PlotLayout = {
+			axes: {
+				left: {
+					...baseAxis,
+					title: 'Y',
+					tickFormat: '0.[00]'
+				},
+				bottom: {
+					...baseAxis,
+					title: 'X'
 				}
+			}
+		}
+
+		const traces: PlotTrace<any>[] = [
+			{
+				data: lineData,
+				x: 'x',
+				y: 'foo',
+				style: lineStyle
 			},
-			traces: [
-				{
-					data: lineData,
-					x: 'x',
-					y: 'foo',
-					style: lineStyle
-				},
-				{
-					data: lineData,
-					x: 'x',
-					y: 'bar',
-					title: "Bar",
-					style: {...lineStyle, strokeDasharray: '6 6'}
-				},
-				{
-					data: pointData,
-					x: 'x',
-					y: 'baz',
-					style: {strokeWidth: 1},
-					marker: {
-						shape: 'circle',
-						size: 8
-					}
+			{
+				data: lineData,
+				x: 'x',
+				y: 'bar',
+				title: "Bar",
+				style: {...lineStyle, strokeDasharray: '6 6'}
+			},
+			{
+				data: pointData,
+				x: 'x',
+				y: 'baz',
+				style: {strokeWidth: 1},
+				marker: {
+					shape: 'circle',
+					size: 8
 				}
-			]
-		})
+			}
+		]
+
+		if (this.plots['simple']) {
+			this.plots['simple'].state = { layout, traces }
+			this.plots['simple'].relayout()
+		}
+		else {
+			this.plots['simple'] = this.makePart(PlotPart, { layout, traces })
+		}
 	}
 
 	makeBar() {
@@ -186,13 +217,14 @@ export class App extends Part<{}> {
 	}
 
 	makeDates() {
+
 		// random walk time-based data
 		let foo = 0
 		let bar = 0
-		const startDate = dayjs().subtract(1, 'year')
+		const startDate = dayjs().subtract(1, 'year').add(this.intervalOffset, 'days')
 		const dateData = Arrays.range(0, 52).map(i => {
-			foo += (Math.random() - 0.5) * 100
-			bar += (Math.random() - 0.5) * 100
+			foo += (seededRandom(i+this.intervalOffset) - 0.5) * 100
+			bar += (seededRandom(i+this.intervalOffset+100) - 0.5) * 100
 			return {
 				date: startDate.add(i, 'weeks').format(),
 				foo: foo,
@@ -211,48 +243,58 @@ export class App extends Part<{}> {
 			strokeWidth: 2
 		} as const
 
-		this.plots['dates'] = this.makePart(PlotPart, {
-			layout: {
-				axes: {
-					left: {...baseAxis, 
-						title: 'Value',
-						tickFormat: '0.[0]',
-						annotations: [{
-							value: 0,
-							style: annStyle
-						}]
-					},
-					bottom: {
-						...baseAxis,
-						type: 'time',
-						title: 'Date',
-						tickMode: 'months',
-						tickFormat: 'MMM',
-						hoverFormat: 'MM/DD/YY',
-						annotations: [{
-							value: newYears.format('YYYY-MM-DD'),
-							style: annStyle
-						}]
-					}
-				}
-			},
-			traces: [
-				{
-					data: dateData,
-					type: 'scatter',
-					x: 'date',
-					y: 'foo',
-					style: dateStyle
+		const layout: PlotLayout = {
+			axes: {
+				left: {...baseAxis, 
+					title: 'Value',
+					tickFormat: '0.[0]',
+					annotations: [{
+						value: 0,
+						style: annStyle
+					}]
 				},
-				{
-					data: dateData,
-					type: 'scatter',
-					x: 'date',
-					y: 'bar',
-					style: dateStyle
+				bottom: {
+					...baseAxis,
+					type: 'time',
+					title: 'Date',
+					tickMode: 'months',
+					tickFormat: 'MMM',
+					hoverFormat: 'MM/DD/YY',
+					annotations: [{
+						value: newYears.format('YYYY-MM-DD'),
+						style: annStyle
+					}]
 				}
-			]
-		})
+			}
+		}
+
+		const traces: PlotTrace<any>[] = [
+			{
+				data: dateData,
+				type: 'scatter',
+				x: 'date',
+				y: 'foo',
+				style: dateStyle
+			},
+			{
+				data: dateData,
+				type: 'scatter',
+				x: 'date',
+				y: 'bar',
+				style: dateStyle
+			}
+		]
+
+		if (this.plots['dates']) {
+			this.plots['dates'].state = { layout, traces }
+			this.plots['dates'].relayout()
+		}
+		else {
+			this.plots['dates'] = this.makePart(PlotPart, {
+				layout,
+				traces
+			})
+		}
 	}
 
 }
