@@ -145,7 +145,7 @@ function computeNumberValues<T extends {}>(axis: PlotAxis, data: T[], col: keyof
  */
 function updateRange<T extends {}>(axis: PlotAxis, trace: PlotTrace<T>, col: keyof T & string) {
     log.info(`Axis.updateRange for ${col}`, axis, trace, col)
-    if (axis.range != 'auto') {
+    if (axis.range != 'auto' && axis.range != 'auto_zero') {
         // manual range
         axis.computedRange = axis.range
         return
@@ -164,7 +164,7 @@ function updateRange<T extends {}>(axis: PlotAxis, trace: PlotTrace<T>, col: key
     const values = Arrays.compact(computeNumberValues(axis, trace.data, col))
     const min = Arrays.min(values)
     let max = Arrays.max(values)
-    axis.computedRange = extendRange({min, max}, axis.computedRange)
+    axis.computedRange = extendRange({ min, max }, axis.computedRange)
     log.info(`Updating axis range with ${col.toString()} to`, axis.computedRange)
 
 }
@@ -234,7 +234,7 @@ function roundRange(axis: PlotAxis): boolean {
         // nothing to round
         return false
     }
-    if (axis.range != 'auto') {
+    if (typeof axis.range == 'object') {
         // don't round a manual range
         return false
     }
@@ -242,6 +242,17 @@ function roundRange(axis: PlotAxis): boolean {
     const step = rangeStep(axis.computedRange, axis.type)
     axis.computedRange.min = Math.floor(axis.computedRange.min / step) * step
     axis.computedRange.max = Math.ceil(axis.computedRange.max / step) * step
+
+    // clamp to zero when range is set to auto_zero
+    if (axis.range == 'auto_zero') {
+        if (axis.computedRange.min > 0) {
+            axis.computedRange.min = 0
+        }
+        if (axis.computedRange.max < 0) {
+            axis.computedRange.max = 0
+        }
+    }
+    
     log.info(`Rounded range`, oldRange, axis.computedRange)
     return true
 }
@@ -343,7 +354,7 @@ export type AxisAnnotation = {
 
 export type PlotAxis = {
     type: AxisType
-    range: 'auto' | AxisRange
+    range: 'auto' | 'auto_zero' | AxisRange
     tickMode?: 'auto' | 'manual' | 'months'
     tickFormat?: string
     ticks?: number[]

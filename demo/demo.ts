@@ -219,8 +219,8 @@ export class App extends Part<{}> {
 	makeDates() {
 
 		// random walk time-based data
-		let foo = 0
-		let bar = 0
+		let foo = 300
+		let bar = 250
 		const startDate = dayjs().subtract(1, 'year').add(this.intervalOffset, 'days')
 		const dateData = Arrays.range(0, 52).map(i => {
 			foo += (seededRandom(i+this.intervalOffset) - 0.5) * 100
@@ -245,7 +245,9 @@ export class App extends Part<{}> {
 
 		const layout: PlotLayout = {
 			axes: {
-				left: {...baseAxis, 
+				left: {
+					...baseAxis, 
+					range: 'auto_zero',
 					title: 'Value',
 					tickFormat: '0.[0]',
 					annotations: [{

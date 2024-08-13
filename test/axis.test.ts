@@ -4,7 +4,7 @@ import dayjs from "dayjs"
 
 describe('Axis Rounding', () => {
 
-    function makeAxis(type: AxisType, range: 'auto' | AxisRange, computedRange?: AxisRange): PlotAxis {
+    function makeAxis(type: AxisType, range: PlotAxis['range'], computedRange?: AxisRange): PlotAxis {
         return {
             type: type,
             range,
@@ -25,6 +25,14 @@ describe('Axis Rounding', () => {
         expect(axis.computedRange).toBeDefined()
         expect(axis.computedRange!.min).toBe(-1)
         expect(axis.computedRange!.max).toBe(1)
+    })
+
+    it('should include zero when range is set to "auto_zero"', () => {
+        const axis = makeAxis('number', 'auto_zero', { min: 4, max: 5 })
+        expect(Axis.roundRange(axis)).toBe(true)
+        expect(axis.computedRange).toBeDefined()
+        expect(axis.computedRange!.min).toBe(0)
+        expect(axis.computedRange!.max).toBe(5)
     })
 
     it('should compute ticks', () => {
